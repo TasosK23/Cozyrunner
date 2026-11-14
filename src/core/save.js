@@ -8,24 +8,42 @@
  *    upgrades a (version N) object to (version N+1). Old saves then upgrade automatically.
  */
 import { storage } from './storage.js';
+import { COMPANIONS } from '../data/companions.js';
+import { UPGRADES } from '../data/upgrades.js';
 
 export const SAVE_KEY = 'lanternfold.save';
-export const VERSION = 1;
+export const VERSION = 2;
 
 export function defaultSave() {
   return {
     v: VERSION,
     createdAt: Date.now(),
     best: { distance: 0, score: 0, combo: 0, seeds: 0, seconds: 0 },
-    seedsBank: 0,                 // spendable currency (upgrades arrive in Stage 2)
+    seedsBank: 0,                 // spendable currency (upgrades, Stage 2)
     xp: 0,                        // profile XP -> level
     stats: {
       runs: 0, totalDistance: 0, totalSeeds: 0, totalSeconds: 0,
       lanterns: 0, fireflies: 0, words: 0, nearMisses: 0, glideGaps: 0, gaps: 0, hits: 0,
       bestCombo: 0, longestRun: 0,
+      powerups: 0, vinesSlid: 0, bounces: 0, perfectBeats: 0, festivals: 0, biomesSeen: 0, surprises: 0, dailyRuns: 0,
+      runsByCompanion: Object.fromEntries(COMPANIONS.map((c) => [c.id, 0])),
     },
     tutorial: { jump: false, slide: false, glide: false, done: false },
-    settings: { haptics: true },
+    settings: {
+      haptics: true, music: true, sfx: true, musicVol: 0.7, sfxVol: 0.9,
+      shake: true, reducedMotion: false, breakReminder: true,
+    },
+    upgrades: Object.fromEntries(UPGRADES.map((u) => [u.id, 0])),
+    companions: {
+      owned: Object.fromEntries(COMPANIONS.map((c) => [c.id, false])),
+      seen: Object.fromEntries(COMPANIONS.map((c) => [c.id, false])),   // "NEW" badge cleared once looked at
+      equipped: '',
+    },
+    quests: { day: '', list: [], rerolled: false },                       // 3 daily quests (see game/quests.js)
+    weekly: { week: '', id: '', progress: 0, target: 0, claimed: false },
+    daily: { date: '', best: 0, bestScore: 0, plays: 0, streak: 0, bestStreak: 0, lastDay: '', freezes: 1, freezeWeek: '', bonusDay: '' },
+    chests: { pity: 0, opened: 0, pending: 0 },
+    seenBiomes: [],                // biome ids the player has visited (for the Stage 3 collection / achievements)
   };
 }
 
@@ -43,6 +61,8 @@ function repair(template, raw) {
       template[key] = repair(want, got);
     } else if (typeof want === 'number') {
       if (typeof got === 'number' && Number.isFinite(got)) template[key] = Math.max(-1e12, Math.min(1e12, got));
+    } else if (Array.isArray(want)) {
+      if (Array.isArray(got)) template[key] = got;
     } else if (typeof want === typeof got) {
       template[key] = got;
     }
@@ -52,7 +72,8 @@ function repair(template, raw) {
 
 /** MIGRATIONS[n] upgrades a version-n save object to version n+1. (None needed yet.) */
 const MIGRATIONS = {
-  // 1: (s) => { s.newThing = 0; s.v = 2; return s; },
+  // v1 -> v2 (Stage 2): everything new is added by the repair step's defaults; nothing to convert.
+  1: (s) => { s.v = 2; return s; },
 };
 
 function migrate(raw) {

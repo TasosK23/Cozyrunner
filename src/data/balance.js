@@ -71,7 +71,7 @@ export const HAZARDS = {
 export const ZONES = { fluff: 0.72, gustTail: 1.22, gustHead: 0.80, fog: 1.0, ramp: 40 };
 
 /** Biomes: each lasts this many meters, then Bramble walks through a glowing doorway into the next. */
-export const BIOME = { lengthM: 500, blendU: 260 };
+export const BIOME = { lengthM: 400, blendU: 260 };
 
 /** Festival Moment: a calm bonus stretch every ~1000 m. Tap on the beat for bonus seeds. */
 export const FESTIVAL = { everyM: 1000, beats: 4, beatLen: 0.62, lead: 0.55, window: 0.15, perfectSeeds: 3, allBonus: 25 };
@@ -112,7 +112,7 @@ export const PICKUP = { seedR: 11, lanternR: 18, teaR: 15, fireflyR: 16, letterR
 export const SPAWN = {
   lanternChance: 0.22, teaChance: 0.07, letterChance: 0.3, letterMinGapM: 60,
   fireflyChance: 0.015, fireflyMinM: 300,
-  powerChance: 0.07, powerMinM: 150, powerMinGapM: 120,
+  powerChance: 0.10, powerMinM: 120, powerMinGapM: 150,
 };
 
 export const WORD = ['C', 'O', 'Z', 'Y'];
