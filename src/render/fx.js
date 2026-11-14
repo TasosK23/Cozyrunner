@@ -6,6 +6,7 @@
 export const K = { DOT: 0, SPARK: 1, CONFETTI: 2, PUFF: 3, LEAF: 4, RING: 5, ZZZ: 6, STAR: 7 };
 
 const TAU = Math.PI * 2;
+const SHARD = [0, -1.25, 0.22, -0.22, 0.9, 0, 0.22, 0.22, 0, 1.25, -0.22, 0.22, -0.9, 0, -0.22, -0.22];   // unit outline of the 4-point shard
 
 export class FX {
   constructor(max = 240, popMax = 14) {
@@ -105,12 +106,14 @@ export class FX {
         }
         case K.SPARK: case K.STAR: {
           const r = q.size * (0.4 + 0.6 * t);
-          ctx.save(); ctx.translate(x, y); ctx.rotate(q.rot);
-          ctx.beginPath();
-          ctx.moveTo(0, -r); ctx.quadraticCurveTo(r * 0.18, -r * 0.18, r, 0);
-          ctx.quadraticCurveTo(r * 0.18, r * 0.18, 0, r); ctx.quadraticCurveTo(-r * 0.18, r * 0.18, -r, 0);
-          ctx.quadraticCurveTo(-r * 0.18, -r * 0.18, 0, -r); ctx.fill();
-          ctx.restore();
+          const c = Math.cos(q.rot); const sn = Math.sin(q.rot);
+          ctx.beginPath();                                   // a sharp four-point shard, rotated by hand
+          for (let j = 0; j < 16; j += 2) {
+            const px = SHARD[j] * r; const py = SHARD[j + 1] * r;
+            const X = x + px * c - py * sn; const Y = y + px * sn + py * c;
+            if (j === 0) ctx.moveTo(X, Y); else ctx.lineTo(X, Y);
+          }
+          ctx.closePath(); ctx.fill();
           break;
         }
         case K.CONFETTI:
@@ -127,10 +130,10 @@ export class FX {
           ctx.strokeStyle = q.color; ctx.lineWidth = 2.5;
           ctx.beginPath(); ctx.arc(x, y, q.size * (1.8 - t), 0, TAU); ctx.stroke();
           break;
-        case K.ZZZ:
-          ctx.font = `800 ${q.size}px ui-rounded, system-ui, sans-serif`;
-          ctx.textAlign = 'center';
-          ctx.fillText('z', x, y);
+        case K.ZZZ:                                          // a rising ember-flame (used when Cinder goes down)
+          ctx.beginPath(); ctx.moveTo(x, y - q.size * 0.9);
+          ctx.quadraticCurveTo(x + q.size * 0.6, y - q.size * 0.1, x, y + q.size * 0.5);
+          ctx.quadraticCurveTo(x - q.size * 0.6, y - q.size * 0.1, x, y - q.size * 0.9); ctx.fill();
           break;
         default:
       }
@@ -145,9 +148,9 @@ export class FX {
       const t = q.life / q.max;
       const grow = t > 0.8 ? 0.6 + (1 - t) * 2 : 1;   // pop-in
       ctx.globalAlpha = t > 0.3 ? 1 : t / 0.3;
-      ctx.font = `800 ${Math.round(q.size * Math.min(1, grow))}px ui-rounded, system-ui, sans-serif`;
+      ctx.font = `900 ${Math.round(q.size * Math.min(1, grow))}px Impact, "Arial Narrow", system-ui, sans-serif`;
       ctx.lineWidth = 5;
-      ctx.strokeStyle = 'rgba(92,60,40,0.85)';
+      ctx.strokeStyle = 'rgba(24,6,10,0.92)';
       ctx.strokeText(q.text, q.x - camX, groundY - q.y);
       ctx.fillStyle = q.color;
       ctx.fillText(q.text, q.x - camX, groundY - q.y);

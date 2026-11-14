@@ -4,9 +4,9 @@
  * during a session (so the game never flickers between looks).
  */
 const LEVELS = [
-  { name: 'high',   dprCap: 2,    particles: 220, ambient: true },
-  { name: 'medium', dprCap: 1.5,  particles: 120, ambient: true },
-  { name: 'low',    dprCap: 1,    particles: 60,  ambient: false },
+  { name: 'high',   dprCap: 2,    particles: 220, ambient: true,  lite: false },
+  { name: 'medium', dprCap: 1.5,  particles: 120, ambient: true,  lite: false },
+  { name: 'low',    dprCap: 1,    particles: 60,  ambient: false, lite: true },   // lite: the hero skips glows, the far wing and fine detail
 ];
 
 export const quality = {
