@@ -31,6 +31,14 @@
       <div class="title-bottom">
         <p class="pill" id="title-best"></p>
         <button id="btn-play" class="btn big" data-i18n="title.play"></button>
+        <button id="btn-daily" class="btn small ghost"><span id="daily-label">Daily Run</span><span class="badge hidden" id="daily-badge"></span></button>
+        <nav class="tiles" aria-label="Menu">
+          <button class="tile" data-open="companions"><span class="tile-ic">&#129418;</span><span>Friends</span><i class="dot hidden" id="dot-companions"></i></button>
+          <button class="tile" data-open="upgrades"><span class="tile-ic">&#127793;</span><span>Upgrades</span><i class="dot hidden" id="dot-upgrades"></i></button>
+          <button class="tile" data-open="quests"><span class="tile-ic">&#128220;</span><span>Quests</span><i class="dot hidden" id="dot-quests"></i></button>
+          <button class="tile" data-open="settings"><span class="tile-ic">&#9881;&#65039;</span><span>Settings</span></button>
+        </nav>
+        <p class="pill soft" id="title-seeds"></p>
       </div>
       <button id="ver" class="ver" aria-hidden="true">v0.1.0</button>
     </section>
@@ -62,13 +70,31 @@
           <div class="bar"><i id="o-fill"></i></div>
           <p id="o-goal"></p>
         </div>
+        <div id="o-extra"></div>
         <p class="warn hidden" id="o-warn"></p>
       </div>
       <div class="actions">
+        <button id="btn-chest" class="btn small hidden"></button>
         <button id="btn-again" class="btn big" data-i18n="over.again"></button>
         <button id="btn-home" class="btn small ghost" data-i18n="over.home"></button>
       </div>
     </section>
+
+    <!-- MENU SHEETS (companions, upgrades, quests, settings, acorn) -->
+    <section id="screen-menu" class="screen sheet hidden">
+      <header class="sheet-head">
+        <button id="menu-back" class="icon-btn" aria-label="Back"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="#5c4033" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <h2 id="menu-title"></h2>
+        <span class="head-space"></span>
+      </header>
+      <div id="menu-body" class="scroll"></div>
+    </section>
+
+    <!-- gentle take-a-break note -->
+    <aside id="break-note" class="break hidden" role="status">
+      <p>You've been playing a while. Bramble says: stretch, sip some water, rest your eyes.</p>
+      <button id="break-ok" class="btn small">Thanks, Bramble</button>
+    </aside>
 
     <div id="rotate" class="hidden"><div><div class="rot-icon">&#128241;</div><p data-i18n="rotate.msg"></p></div></div>
     <div id="safe-probe" aria-hidden="true"></div>

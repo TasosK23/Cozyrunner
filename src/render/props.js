@@ -5,6 +5,8 @@
  * (green up-arrow = jump, blue down-arrow = slide, double arrow = glide), so you always know
  * what is coming and what to do. (Stage 2 adds a matching sound.)
  */
+import { FESTIVAL } from '../data/balance.js';
+
 const TAU = Math.PI * 2;
 let glowSprite = null;
 
@@ -225,6 +227,190 @@ function drawLetter(ctx, q, camX, g, t, ch) {
   ctx.textBaseline = 'alphabetic';
 }
 
+
+// ------------------------------------------------------------------ Stage 2 hazards & pickups
+/** A raindrop falling from a grumble cloud: a teardrop that wobbles. Hitbox is 18x18, so the art is ~that. */
+function drawDrop(ctx, h, camX, g, t) {
+  const cx = (h.x0 + h.x1) / 2 - camX;
+  const cy = g - h.cy;
+  const w = Math.sin(t * 9 + h.x0 * 0.05) * 0.8;
+  drawGlow(ctx, cx, cy, 34, 0.18);
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.fillStyle = '#9fd0ff'; ctx.strokeStyle = '#4f86c4'; ctx.lineWidth = 1.8;
+  ctx.beginPath();
+  ctx.moveTo(w, -13); ctx.quadraticCurveTo(10, -1, 8, 4); ctx.arc(0, 3.5, 8.2, 0, Math.PI); ctx.quadraticCurveTo(-10, -1, w, -13);
+  ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,0.85)';
+  ctx.beginPath(); ctx.ellipse(-3, 2, 1.8, 3.4, 0.3, 0, TAU); ctx.fill();
+  ctx.restore();
+}
+
+/** Bouncy mushroom: squashes when stepped on (pad.squash 0..1, set by the sim). */
+function drawPad(ctx, pad, camX, g, t) {
+  const x = pad.x - camX;
+  const sq = Math.max(0, pad.squash || 0);
+  const cw = 31 + sq * 6;
+  const ch = 16 - sq * 7;
+  ctx.save();
+  ctx.translate(x + 29, g - 4);
+  const idle = Math.sin(t * 2.4 + pad.x * 0.02) * 0.6;
+  drawGlow(ctx, 0, -14, 80, 0.35);
+  ctx.fillStyle = '#f6e9dc'; ctx.strokeStyle = '#b89c86'; ctx.lineWidth = 1.8;
+  ctx.fillRect(-7, -12 + sq * 6, 14, 12 - sq * 6); ctx.strokeRect(-7, -12 + sq * 6, 14, 12 - sq * 6);
+  ctx.fillStyle = '#ee7fb0'; ctx.strokeStyle = '#a2406f'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.ellipse(0, -12 + sq * 6 + idle, cw, ch, 0, Math.PI, 0); ctx.lineTo(-cw, -12 + sq * 6 + idle); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,0.92)';
+  ctx.beginPath(); ctx.arc(-14, -20 + sq * 5, 4, 0, TAU); ctx.arc(2, -25 + sq * 6, 5, 0, TAU); ctx.arc(17, -19 + sq * 5, 3.6, 0, TAU); ctx.fill();
+  ctx.restore();
+}
+
+function drawGoldSeed(ctx, x, y, t, swarm) {
+  const b = Math.sin(t * 3.4 + x * 0.05) * 2.4;
+  drawGlow(ctx, x, y + b, swarm ? 40 : 46, 0.85);
+  ctx.save(); ctx.translate(x, y + b); ctx.scale(1 + Math.sin(t * 6 + x) * 0.05, 1);
+  ctx.fillStyle = swarm ? '#ffe9a0' : '#ffd24a'; ctx.strokeStyle = swarm ? '#e9b44a' : '#d18a10'; ctx.lineWidth = 1.8;
+  ctx.beginPath(); ctx.moveTo(0, -10); ctx.quadraticCurveTo(9, -1, 0, 8); ctx.quadraticCurveTo(-9, -1, 0, -10); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(-2.5, -3, 2, 0, TAU); ctx.fill();
+  ctx.restore();
+}
+
+const POWER_COLOR = { honey: '#ffbf3f', hop: '#8fd0ff', dash: '#ff8f8f', burst: '#ffe27a', blanket: '#d6a5ff' };
+const POWER_KINDS = ['honey', 'hop', 'dash', 'burst', 'blanket'];
+
+function drawPowerIcon(ctx, kind, x, y, s, t) {
+  ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
+  ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  switch (kind) {
+    case 'honey':                                      // honey pot with a drip
+      ctx.fillStyle = '#ffcf4a'; ctx.strokeStyle = '#b8801c';
+      ctx.beginPath(); ctx.ellipse(0, 2, 9, 8, 0, 0, TAU); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#b8801c'; ctx.fillRect(-6, -8, 12, 4);
+      ctx.fillStyle = '#ffcf4a'; ctx.beginPath(); ctx.arc(5, 11, 2.4, 0, TAU); ctx.fill();
+      break;
+    case 'hop':                                        // little cloud with an up arrow
+      ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#6fa8d6';
+      ctx.beginPath(); ctx.arc(-6, 3, 6, 0, TAU); ctx.arc(1, -1, 8, 0, TAU); ctx.arc(8, 3, 6, 0, TAU); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(-3, -9); ctx.lineTo(1, -14); ctx.lineTo(5, -9); ctx.stroke();
+      break;
+    case 'dash':                                       // teapot
+      ctx.fillStyle = '#ff9a8a'; ctx.strokeStyle = '#b4503f';
+      ctx.beginPath(); ctx.ellipse(0, 2, 10, 8, 0, 0, TAU); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(9, 0); ctx.lineTo(15, -5); ctx.stroke();
+      ctx.beginPath(); ctx.arc(-11, 2, 5, -1.2, 1.2); ctx.stroke();
+      ctx.fillStyle = '#b4503f'; ctx.beginPath(); ctx.arc(0, -7, 2.4, 0, TAU); ctx.fill();
+      break;
+    case 'burst':                                      // lantern with rays
+      ctx.fillStyle = '#ffe27a'; ctx.strokeStyle = '#c4902a';
+      ctx.beginPath(); ctx.ellipse(0, 0, 7, 9, 0, 0, TAU); ctx.fill(); ctx.stroke();
+      ctx.strokeStyle = '#ffd36a';
+      for (let i = 0; i < 6; i++) { const a = i * (TAU / 6) + t; ctx.beginPath(); ctx.moveTo(Math.cos(a) * 12, Math.sin(a) * 12); ctx.lineTo(Math.cos(a) * 16, Math.sin(a) * 16); ctx.stroke(); }
+      break;
+    default:                                           // blanket: folded patchwork square
+      ctx.fillStyle = '#e4c6ff'; ctx.strokeStyle = '#8b5cc4';
+      ctx.beginPath(); ctx.rect(-9, -8, 18, 16); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#ffb3d0'; ctx.fillRect(-9, -8, 9, 8); ctx.fillStyle = '#b3e6ff'; ctx.fillRect(0, 0, 9, 8);
+      ctx.strokeRect(-9, -8, 18, 16);
+  }
+  ctx.restore();
+}
+
+export { drawPowerIcon, POWER_COLOR, POWER_KINDS };
+
+function drawPower(ctx, q, camX, g, t) {
+  const x = q.x - camX;
+  const y = g - q.y + Math.sin(t * 2.2 + q.x * 0.03) * 4;
+  const kind = POWER_KINDS[q.kind % 5];
+  const col = POWER_COLOR[kind];
+  drawGlow(ctx, x, y, 80, 0.55);
+  ctx.fillStyle = 'rgba(255,255,255,0.88)'; ctx.strokeStyle = col; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.arc(x, y, 18, 0, TAU); ctx.fill(); ctx.stroke();
+  ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.globalAlpha = 0.5 + 0.3 * Math.sin(t * 5);
+  ctx.beginPath(); ctx.arc(x, y, 22 + Math.sin(t * 5) * 1.5, 0, TAU); ctx.stroke(); ctx.globalAlpha = 1;
+  drawPowerIcon(ctx, kind, x, y, 0.85, t);
+}
+
+// ------------------------------------------------------------------ decor (background-ish things placed by chunks/events)
+function drawDecor(ctx, d, camX, g, t) {
+  const x0 = d.x0 - camX; const x1 = d.x1 - camX;
+  if (x1 < -40 || x0 > 620) return;
+  if (d.kind === 'cloud') {                              // grumble cloud above a raindrop stretch
+    const w = d.x1 - d.x0; const cx = x0 + w / 2; const y = g - 250;
+    ctx.save();
+    const n = Math.max(3, Math.round(w / 55));
+    ctx.fillStyle = '#8791a8'; ctx.strokeStyle = '#69728a'; ctx.lineWidth = 1.6;
+    for (let i = 0; i < n; i++) {
+      const bx = x0 + 14 + ((w - 28) * i) / (n - 1);
+      const by = y + Math.sin(t * 1.2 + i * 1.7) * 3;
+      ctx.beginPath(); ctx.arc(bx, by, 26 + (i % 2) * 6, 0, TAU); ctx.fill();
+    }
+    ctx.fillStyle = '#a2abc0';
+    for (let i = 0; i < n; i++) { const bx = x0 + 14 + ((w - 28) * i) / (n - 1); ctx.beginPath(); ctx.arc(bx, y - 10 + (i % 2) * 4, 20, 0, TAU); ctx.fill(); }
+    // grumpy sleepy face
+    ctx.strokeStyle = '#4a4f66'; ctx.lineWidth = 2.4; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(cx - 16, y - 2); ctx.lineTo(cx - 6, y + 1); ctx.moveTo(cx + 16, y - 2); ctx.lineTo(cx + 6, y + 1); ctx.stroke();
+    ctx.beginPath(); ctx.arc(cx, y + 14, 7, 1.1 * Math.PI, 1.9 * Math.PI); ctx.stroke();
+    ctx.restore();
+  } else if (d.kind === 'rainbow') {
+    const w = d.x1 - d.x0; const cx = x0 + w / 2; const r = Math.max(60, w / 2);
+    const cols = ['#ff9aa8', '#ffc58a', '#ffee9a', '#a9e5a0', '#9ad0f5', '#c3a8f0'];
+    ctx.save(); ctx.lineWidth = 7; ctx.globalAlpha = 0.85; ctx.lineCap = 'butt';
+    for (let i = 0; i < cols.length; i++) { ctx.strokeStyle = cols[i]; ctx.beginPath(); ctx.arc(cx, g + 30, r - i * 6.5, Math.PI, 0); ctx.stroke(); }
+    ctx.restore();
+  } else if (d.kind === 'lanternrow') {
+    ctx.save(); ctx.strokeStyle = 'rgba(120,85,55,0.5)'; ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.moveTo(x0, g - 230); ctx.quadraticCurveTo((x0 + x1) / 2, g - 190, x1, g - 230); ctx.stroke();
+    for (let i = 0; i <= 6; i++) {
+      const u = i / 6; const lx = x0 + (x1 - x0) * u; const ly = g - 230 + Math.sin(u * Math.PI) * 40 + 10;
+      drawGlow(ctx, lx, ly + 8, 48, 0.55);
+      ctx.fillStyle = '#ffcf6a'; ctx.strokeStyle = '#c47f2a'; ctx.lineWidth = 1.4;
+      ctx.beginPath(); ctx.ellipse(lx, ly + 8, 6, 8, 0, 0, TAU); ctx.fill(); ctx.stroke();
+    }
+    ctx.restore();
+  }
+}
+
+/** The festival: a cozy string of lights over the stretch, and a ring that shrinks onto each beat. */
+function drawFestival(ctx, run, camX, g, t, px) {
+  for (let i = 0; i < run.fests.length; i++) {
+    const f = run.fests[i];
+    const x0 = f.x0 - camX; const x1 = f.x1 - camX;
+    if (x1 < -40 || x0 > 620) continue;
+    ctx.save();
+    ctx.strokeStyle = 'rgba(120,85,55,0.55)'; ctx.lineWidth = 1.8;
+    ctx.beginPath(); ctx.moveTo(x0, g - 200); ctx.quadraticCurveTo((x0 + x1) / 2, g - 150, x1, g - 200); ctx.stroke();
+    const n = Math.max(4, Math.round((f.x1 - f.x0) / 60));
+    const cols = ['#ff9fb3', '#ffd36a', '#9fe08a', '#9fd8f0', '#d6b3ff'];
+    for (let k = 0; k <= n; k++) {
+      const u = k / n; const lx = x0 + (x1 - x0) * u; const ly = g - 200 + Math.sin(u * Math.PI) * 50 + 6;
+      drawGlow(ctx, lx, ly + 6, 36, 0.5);
+      ctx.fillStyle = cols[k % cols.length];
+      ctx.beginPath(); ctx.arc(lx, ly + 6, 5, 0, TAU); ctx.fill();
+    }
+    ctx.restore();
+  }
+  const f = run.fest;
+  if (f && f.active && !f.finished) {
+    const FEST = FESTIVAL;
+    for (let k = 0; k < FEST.beats; k++) {
+      if (f.hit[k]) continue;
+      const tau = f.t0 + k * FEST.beatLen - run.time;
+      if (tau > FEST.lead + 0.05 || tau < -FEST.window) continue;
+      const u = Math.max(0, Math.min(1, tau / FEST.lead));
+      const r = 22 + 70 * u;
+      const a = Math.max(0, Math.min(1, 1 - Math.abs(tau) / (FEST.lead + 0.1)) + 0.25);
+      const cy = g - run.p.y - 34;
+      ctx.save(); ctx.globalAlpha = Math.min(1, a);
+      ctx.strokeStyle = '#ffe58a'; ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.arc(px, cy, r, 0, TAU); ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(px, cy, 22, 0, TAU); ctx.stroke();
+      ctx.restore();
+      break;      // only the next beat, so it stays calm
+    }
+  }
+}
+
 // ------------------------------------------------------------------ best-run ghost
 function drawGhost(ctx, x, g, t, label, hover) {
   const y = g - (hover ? 24 + Math.sin(t * 2) * 4 : 0);
@@ -255,6 +441,17 @@ export function drawProps(ctx, run, camX, groundY, t, bestLabel) {
     drawGhost(ctx, run.ghostX - camX, groundY, t, bestLabel, !run.groundAt(run.ghostX));
   }
 
+  for (let i = 0; i < run.decor.length; i++) drawDecor(ctx, run.decor[i], camX, groundY, t);
+  drawFestival(ctx, run, camX, groundY, t, run.p.x - camX);
+  for (let i = 0; i < run.pads.length; i++) {
+    const pd = run.pads[i];
+    const sx = pd.x - camX;
+    if (sx > 640 || sx < -90) continue;
+    drawPad(ctx, pd, camX, groundY, t);
+    const ahead = pd.x0 - px;
+    if (ahead > -30) drawTell(ctx, sx + 29, groundY - 70, 'jump', tellAlpha(ahead) * 0.8, t);
+  }
+
   for (let i = 0; i < run.hazards.length; i++) {
     const h = run.hazards[i];
     if (!h.active) continue;
@@ -263,10 +460,12 @@ export function drawProps(ctx, run, camX, groundY, t, bestLabel) {
     const ahead = h.x0 - px;
     if (h.type === 'snail') drawSnail(ctx, sx + (h.x1 - h.x0) / 2, groundY, t, h);
     else if (h.type === 'vine') drawVine(ctx, h, camX, groundY, t);
+    else if (h.type === 'drop') drawDrop(ctx, h, camX, groundY, t);
     if (!h.passed && ahead > -40) {
       const a = tellAlpha(ahead);
       if (h.type === 'snail') drawTell(ctx, sx + 19, groundY - 78, 'jump', a, t);
       else if (h.type === 'vine') drawTell(ctx, sx + 22, groundY - 96, 'slide', a, t);
+      else if (h.type === 'drop') { /* the raindrop itself is the warning; its sound tells you too */ }
       else drawTell(ctx, (h.x0 + h.x1) / 2 - camX, groundY - 90, h.hint === 'glide' ? 'glide' : 'jump', a, t);
     }
   }
@@ -277,7 +476,11 @@ export function drawProps(ctx, run, camX, groundY, t, bestLabel) {
     const sx = q.x - camX;
     if (sx > 620 || sx < -60) continue;
     switch (q.type) {
-      case 'seed': drawSeed(ctx, sx, groundY - q.y, t); break;
+      case 'seed':
+        if (q.var === 1 || q.var === 2) drawGoldSeed(ctx, sx, groundY - q.y, t, q.var === 2);
+        else drawSeed(ctx, sx, groundY - q.y, t);
+        break;
+      case 'power': drawPower(ctx, q, camX, groundY, t); break;
       case 'lantern': drawLantern(ctx, q, camX, groundY, t); break;
       case 'tea': drawTea(ctx, q, camX, groundY, t); break;
       case 'firefly': drawFirefly(ctx, q, camX, groundY, t); break;

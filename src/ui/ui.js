@@ -10,7 +10,7 @@ const $ = (sel) => document.querySelector(sel);
 function easeOut(u) { return 1 - Math.pow(1 - u, 3); }
 
 export class UI {
-  /** @param h handlers {play, again, home, resume, restart, pause, skipTips} */
+  /** @param h handlers {play, again, home, resume, restart, pause, skipTips, daily, open(panel), chest} */
   constructor(h) {
     this.h = h;
     this.screens = { title: $('#screen-title'), pause: $('#screen-pause'), over: $('#screen-over') };
@@ -31,6 +31,12 @@ export class UI {
     click('#btn-pause-home', () => h.home());
     click('#btn-pause', () => h.pause());
     click('#btn-skip', () => h.skipTips());
+    click('#btn-daily', () => h.daily());
+    click('#btn-chest', () => h.chest());
+    click('#break-ok', () => $('#break-note').classList.add('hidden'));
+    for (const el of document.querySelectorAll('[data-open]')) {
+      el.addEventListener('click', (e) => { e.preventDefault(); h.open(el.dataset.open); });
+    }
 
     // keyboard shortcuts on menu screens
     window.addEventListener('keydown', (e) => {
@@ -49,11 +55,40 @@ export class UI {
 
   hideAll() { this._only(''); }
 
-  showTitle(bestMeters) {
+  /** @param info {seeds, dailyDone, streak, dots:{companions,upgrades,quests}, hideMeta} */
+  showTitle(bestMeters, info = {}) {
     this._only('title');
     $('#title-best').textContent = bestMeters > 0 ? t('title.best', { m: bestMeters }) : t('title.first');
     this.setRunning(false, false);
+    this.refreshTitle(info);
   }
+
+  refreshTitle(info = {}) {
+    const meta = !info.hideMeta;
+    $('#btn-daily').classList.toggle('hidden', !meta);
+    document.querySelector('.tiles').classList.toggle('hidden', !meta);
+    $('#title-seeds').classList.toggle('hidden', !meta);
+    if (!meta) return;
+    $('#title-seeds').textContent = `${(info.seeds || 0).toLocaleString('en-US')} glow-seeds`;
+    $('#daily-label').textContent = info.dailyDone ? 'Daily Run again' : 'Daily Run';
+    const b = $('#daily-badge');
+    b.classList.toggle('hidden', !(info.streak > 0));
+    b.textContent = `${info.streak || 0} day${info.streak === 1 ? '' : 's'}`;
+    const dots = info.dots || {};
+    for (const k of ['companions', 'upgrades', 'quests']) $(`#dot-${k}`).classList.toggle('hidden', !dots[k]);
+  }
+
+  /** After the acorn sheet closes on the game-over card: update the button. */
+  refreshOverChests(n) {
+    const cb = $('#btn-chest');
+    cb.classList.toggle('hidden', !(n > 0));
+    cb.textContent = `Open Mystery Acorn (${n})`;
+  }
+
+  /** Is any menu sheet showing? */
+  menuOpen() { return !$('#screen-menu').classList.contains('hidden'); }
+
+  showBreak() { $('#break-note').classList.remove('hidden'); }
 
   /** Show/hide the in-run buttons. */
   setRunning(on, tips) {
@@ -66,8 +101,31 @@ export class UI {
   showPause() { this._only('pause'); }
   hidePause() { this._only(''); }
 
+  _extras(s) {
+    const x = $('#o-extra');
+    const parts = [];
+    const esc = (v) => String(v).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+    if (s.daily) {
+      const d = s.daily;
+      parts.push(`<div class="xrow gold">Daily Run: streak ${d.streak} day${d.streak === 1 ? '' : 's'}${d.usedFreeze ? ' (a freeze saved it)' : ''}${d.bonusSeeds ? ` · +${d.bonusSeeds} seeds` : ''}${d.chest ? ' · mystery acorn!' : ''}</div>`);
+    }
+    for (const q of s.quests || []) parts.push(`<div class="xrow">Quest done: ${esc(q.text)} · +${q.reward} seeds</div>`);
+    if (s.weekly) parts.push(`<div class="xrow gold">Weekly challenge done: ${esc(s.weekly.text)} · +${s.weekly.reward} seeds + acorn</div>`);
+    for (const c of s.unlocked || []) parts.push(`<div class="xrow gold">${esc(c.name)} (${esc(c.kind)}) wants to join Bramble! Find it under Friends.</div>`);
+    for (const m of s.biomes || []) parts.push(`<div class="xrow">New place discovered: ${esc(m)}</div>`);
+    if (s.next) {
+      const pct = Math.round(s.next.pr.pct * 100);
+      parts.push(`<div class="xnext">${pct}% to a new friend: ${esc(s.next.comp.unlock.text.replace('{n}', s.next.comp.unlock.target))}<div class="mini"><i style="width:${pct}%"></i></div></div>`);
+    }
+    x.innerHTML = parts.join('');
+    const cb = $('#btn-chest');
+    cb.classList.toggle('hidden', !(s.chests > 0));
+    cb.textContent = `Open Mystery Acorn (${s.chests || 0})`;
+  }
+
   /**
-   * @param s {title, distM, score, seeds, newBest, prevBestM, levelBefore, levelAfter, persistent}
+   * @param s {title, distM, score, seeds, newBest, prevBestM, levelBefore, levelAfter, persistent,
+   *           quests, weekly, daily, unlocked, biomes, next, chests}
    */
   showOver(s) {
     this._only('over');
@@ -77,6 +135,7 @@ export class UI {
     $('#over-title').textContent = s.title;
     $('#over-newbest').classList.toggle('hidden', !s.newBest);
     $('#o-warn').classList.toggle('hidden', s.persistent);
+    this._extras(s);
     $('#o-warn').textContent = t('over.storage');
     const cmp = $('#o-compare');
     if (s.prevBestM <= 0) cmp.textContent = t('over.compare.first');
