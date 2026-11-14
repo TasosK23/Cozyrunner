@@ -10,7 +10,7 @@
  *  - BUILD below is rewritten by `node tools/gen-assets.mjs` whenever a game file changes, which makes THIS file
  *    change, which is what makes browsers notice there is a new version at all.
  */
-const BUILD = 'c70ab01c33';
+const BUILD = '7edc413df9';
 const PREFIX = 'emberwing-';
 const CACHE = PREFIX + BUILD;
 

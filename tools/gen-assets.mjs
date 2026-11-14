@@ -22,13 +22,13 @@ function walk(dir, out) {
   return out;
 }
 
-export function collect() {
+function collect() {
   const files = [...SHIP_FILES];
   for (const d of SHIP_DIRS) for (const p of walk(join(ROOT, d), [])) files.push(relative(ROOT, p).split(sep).join('/'));
   return files.sort();
 }
 
-export function build() {
+function build() {
   const files = collect();
   const h = createHash('sha256');
   for (const f of files) { h.update(f); h.update('\0'); h.update(readFileSync(join(ROOT, f))); h.update('\0'); }

@@ -50,8 +50,14 @@ try:
         pg.goto(f'http://localhost:{PORT}/index.html'); pg.wait_for_selector('#btn-play', state='visible'); pg.wait_for_timeout(500)
         for name, size, kind in [('icon-192.png', 192, 'any'), ('icon-512.png', 512, 'any'), ('maskable-512.png', 512, 'full'), ('apple-touch-icon.png', 180, 'full')]:
             url = pg.evaluate(DRAW, {'size': size, 'kind': kind})
-            open(os.path.join(OUT, name), 'wb').write(base64.b64decode(url.split(',', 1)[1]))
-            print('wrote', name, size, kind)
+            path = os.path.join(OUT, name)
+            open(path, 'wb').write(base64.b64decode(url.split(',', 1)[1]))
+            try:                                    # optional lossless re-compression (same pixels, about 40% smaller)
+                from PIL import Image
+                Image.open(path).save(path, 'PNG', optimize=True)
+            except ImportError:
+                pass
+            print('wrote', name, size, kind, os.path.getsize(path), 'bytes')
         print('errors:', errs)
         b.close()
 finally:
