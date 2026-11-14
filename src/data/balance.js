@@ -45,7 +45,8 @@ export const PLAYER = {
   fallY: -70,           // below this you've fallen into the clouds
   invuln: 1.5,          // s of blink-invulnerability after a bump
   hearts: 3,            // "warmth hearts" at the start of a run
-  maxHearts: 5,
+  maxHearts: 6,
+  bounceV: 1080,        // Bouncy Mushroom launch speed (apex ~250u, ~1 s of air)
 };
 
 /** Speed ramps smoothly from start toward max as meters accumulate. */
@@ -58,11 +59,39 @@ export function speedAt(meters) {
 export const HAZARDS = {
   snail: { w: 38, h: 28 },
   vine: { w: 44, bottom: 36, top: 3000 },   // hangs from above; bottom edge is 36u above ground
+  drop: { r: 9 },                            // a grumble-cloud raindrop is an 18x18 box
+  pad: { w: 58, h: 22, pad: 6 },             // bouncy mushroom: bounce zone is 6u wider than drawn
   nearMiss: { snailClear: 12, vineSlideLeft: 0.09, gapLand: 26 },
+};
+
+/**
+ * Speed zones. They change Bramble's forward speed while she is inside them (with a soft 40u ramp
+ * at each edge). The beatability solver uses these exact same numbers, so every zone is proven fair.
+ */
+export const ZONES = { fluff: 0.72, gustTail: 1.22, gustHead: 0.80, fog: 1.0, ramp: 40 };
+
+/** Biomes: each lasts this many meters, then Bramble walks through a glowing doorway into the next. */
+export const BIOME = { lengthM: 500, blendU: 260 };
+
+/** Festival Moment: a calm bonus stretch every ~1000 m. Tap on the beat for bonus seeds. */
+export const FESTIVAL = { everyM: 1000, beats: 4, beatLen: 0.62, lead: 0.55, window: 0.15, perfectSeeds: 3, allBonus: 25 };
+
+/** Surprise events (variable rewards). A separate seeded stream, so they never disturb the course. */
+export const EVENTS = { chance: 0.13, cooldownChunks: 5, minM: 250 };
+
+/** Power-ups. dur is seconds before upgrades/companions stretch it. */
+export const POWER = {
+  warn: 1.6,
+  honey: { dur: 9, radius: 175 },
+  hop: { dur: 14, jumps: 3 },
+  dash: { dur: 4, mul: 1.38 },
+  burst: { dur: 5, radius: 175 },
+  blanket: { dur: 30 },
 };
 
 export const SCORE = {
   perMeter: 1, seed: 10, lantern: 40, firefly: 250, letter: 60, word: 400, nearMiss: 25, tea: 15,
+  perfectBeat: 30, goldSeed: 30,
   glowDistanceBonus: 1.5,   // distance points are x1.5 while Bramble's lantern is glowing
 };
 
@@ -74,12 +103,16 @@ export const COMBO = {
 
 export const GLOW = { perLantern: 35, max: 100, drain: 6, magnet: 80 };
 
-export const PICKUP = { seedR: 11, lanternR: 18, teaR: 15, fireflyR: 16, letterR: 15, reach: 22 };
+/** Time effects (juice). */
+export const JUICE = { hitStopTicks: 3, slowMoScale: 0.45, zoomMin: 0.93, speedLinesFrom: 0.45 };
+
+export const PICKUP = { seedR: 11, lanternR: 18, teaR: 15, fireflyR: 16, letterR: 15, powerR: 18, reach: 22 };
 
 /** How the generator decorates "slots" in chunks with special pickups. */
 export const SPAWN = {
   lanternChance: 0.22, teaChance: 0.07, letterChance: 0.3, letterMinGapM: 60,
   fireflyChance: 0.015, fireflyMinM: 300,
+  powerChance: 0.07, powerMinM: 150, powerMinGapM: 120,
 };
 
 export const WORD = ['C', 'O', 'Z', 'Y'];
@@ -92,8 +125,18 @@ export const DIRECTOR = {
 };
 
 /** Profile XP: always earned, so every run is worth something. */
-export const XP = { perMeter: 0.12, perSeed: 0.6, perRun: 8, level1: 100, perLevelGrowth: 50 };
+export const XP = { perMeter: 0.12, perSeed: 0.6, perRun: 8, level1: 100, perLevelGrowth: 50, daily: 40 };
 
-export const POOLS = { hazards: 40, pickups: 200 };
+/** Mystery acorn chests. A chest is guaranteed after this many chest-less runs (a gentle pity timer). */
+export const CHEST = { pityRuns: 4, baseChance: 0.28, newBestBonus: 0.15, questBonus: 0.12, dailyGuaranteed: true,
+  weights: { common: 62, uncommon: 25, rare: 11, legendary: 2 } };
+
+/** Daily rhythm. */
+export const DAILY = { bonusSeeds: 40, freezesPerWeek: 1 };
+
+/** A soft "stretch your legs" note on the game-over card after this many minutes of play in a session. */
+export const BREAK_AFTER_MIN = 40;
+
+export const POOLS = { hazards: 40, pickups: 260 };
 
 export const DYING_TIME = 0.95;   // seconds from the last heart to the game-over card

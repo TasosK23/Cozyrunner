@@ -18,8 +18,7 @@ for (let seed = 1; seed <= seeds; seed++) {
   const t0 = Date.now();
   while (run.distM < targetM && run.state === 'running') {
     if (tick % 3 === 0) {
-      const hz = run.hazards.filter((h) => h.active && h.type !== 'gap' && h.x1 > run.p.x - 40 && h.x0 < run.p.x + 900);
-      const a = planAction({ hazards: hz, groundAt: run.groundFn }, run.p, run.speed || 250, 22);
+      const a = planAction(run.courseView(900), run.p, run.baseSpeed || 250, 22);
       act = a || { press: false, hold: false, slide: false };
       if (!a && !lost) lost = `no safe plan at ${run.distM.toFixed(0)} m`;
     }

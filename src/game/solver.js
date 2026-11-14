@@ -18,8 +18,8 @@
  * Because every chunk starts AND ends with "standing on the ground", chunks chain:
  * if each piece is beatable from grounded->grounded, any sequence of pieces is beatable.
  */
-import { PLAYER, SIM, SPEED, HAZARDS } from '../data/balance.js';
-import { makePlayer, copyPlayer, stepPlayer, playerBox, boxHitsHazard } from './physics.js';
+import { PLAYER, SIM, SPEED, HAZARDS, ZONES } from '../data/balance.js';
+import { makePlayer, copyPlayer, stepPlayer, playerBox, boxHitsHazard, zoneMul } from './physics.js';
 
 const STEPS_PER_DECISION = 3;   // 3 x (1/60 s) = 0.05 s
 const SOLVER_PAD = 5;
@@ -32,21 +32,29 @@ const ACTIONS = [
   { press: false, hold: false, slide: true },    // 3: swipe down
 ];
 
+/** Zone kind -> speed multiplier (shared with the live game via ZONES in balance.js). */
+export const ZONE_MUL = { fluff: ZONES.fluff, gustTail: ZONES.gustTail, gustHead: ZONES.gustHead, fog: ZONES.fog };
+
 /** Turn a chunk definition into collision data. */
 export function chunkToCourse(chunk) {
   const hazards = [];
-  for (const [type, x] of chunk.hazards) {
+  for (const h of chunk.hazards) {
+    const [type, x, y] = h;
     if (type === 'snail') hazards.push({ type, x0: x, x1: x + HAZARDS.snail.w, y0: 0, y1: HAZARDS.snail.h });
     else if (type === 'vine') hazards.push({ type, x0: x, x1: x + HAZARDS.vine.w, y0: HAZARDS.vine.bottom, y1: HAZARDS.vine.top });
+    else if (type === 'drop') hazards.push({ type, x0: x - HAZARDS.drop.r, x1: x + HAZARDS.drop.r, y0: y - HAZARDS.drop.r, y1: y + HAZARDS.drop.r });
     else throw new Error(`unknown hazard ${type}`);
   }
+  const pads = (chunk.pads || []).map((x) => ({ x0: x - HAZARDS.pad.pad, x1: x + HAZARDS.pad.w + HAZARDS.pad.pad }));
+  const padAt = (x) => { for (const p of pads) if (x >= p.x0 && x <= p.x1) return true; return false; };
+  const zones = (chunk.zones || []).map((z) => ({ x0: z.x0, x1: z.x1, mul: ZONE_MUL[z.kind] ?? 1 }));
   const gaps = chunk.gaps.map(([x, w]) => ({ x0: x, x1: x + w }));
   const pad = PLAYER.edgePad;
   const groundAt = (x) => {
     for (const g of gaps) if (x > g.x0 + pad && x < g.x1 - pad) return false;
     return true;
   };
-  return { hazards, gaps, groundAt, endX: chunk.len };
+  return { hazards, gaps, groundAt, padAt: pads.length ? padAt : null, zones, endX: chunk.len };
 }
 
 function keyOf(s) {
@@ -83,7 +91,7 @@ function advance(frontier, course, speed, pad, casual, box, inp) {
         inp.press = k === 0 && ACTIONS[ai].press;
         inp.slide = k === 0 && ACTIONS[ai].slide;
         inp.hold = ACTIONS[ai].hold;
-        stepPlayer(t, inp, dt, speed, course.groundAt);
+        stepPlayer(t, inp, dt, speed * zoneMul(course.zones, t.x), course.groundAt, PLAYER, course.padAt);
         if (t.y < PLAYER.fallY) { dead = true; break; }
         playerBox(t, pad, box);
         for (const h of course.hazards) {
@@ -160,11 +168,13 @@ export function validationSpeeds() {
 export function validateChunk(chunk) {
   const problems = [];
   const course = chunkToCourse(chunk);
-  if (chunk.diff > 0 && chunk.hazards.length + chunk.gaps.length === 0) problems.push('difficulty>0 but no hazards');
-  if (chunk.diff === 0 && chunk.hazards.length + chunk.gaps.length > 0) problems.push('breather has hazards');
-  const firstX = Math.min(...[...course.hazards.map((h) => h.x0), ...course.gaps.map((g) => g.x0)], Infinity);
+  const padCount = (chunk.pads || []).length;
+  if (chunk.diff > 0 && chunk.hazards.length + chunk.gaps.length + padCount === 0) problems.push('difficulty>0 but no hazards');
+  if (chunk.diff === 0 && chunk.hazards.length + chunk.gaps.length + padCount > 0) problems.push('breather has hazards');
+  const firstX = Math.min(...[...course.hazards.map((h) => h.x0), ...course.gaps.map((g) => g.x0), ...(chunk.pads || [])], Infinity);
   if (firstX !== Infinity && firstX < 240) problems.push(`first hazard at ${firstX} < 240 (not enough warning)`);
   for (const h of course.hazards) if (h.x1 > chunk.len - 120) problems.push('hazard too close to chunk end');
+  for (const x of chunk.pads || []) if (x + HAZARDS.pad.w > chunk.len - 360) problems.push('mushroom too close to chunk end (needs room to land)');
   for (const g of course.gaps) if (g.x1 > chunk.len - 120) problems.push('gap too close to chunk end');
   for (const p of chunk.pickups) {
     if (p.x < 0 || p.x > chunk.len) problems.push(`pickup x out of range (${p.x})`);

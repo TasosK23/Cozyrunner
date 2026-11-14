@@ -8,11 +8,11 @@
  * Coordinates: x grows to the right (the world scrolls past a runner moving at `speed`),
  * y is feet height above the ground line (up is positive).
  */
-import { PLAYER } from '../data/balance.js';
+import { PLAYER, ZONES } from '../data/balance.js';
 
 /** Event bits set in `state.ev` during a step (so visuals/audio can react). */
 export const EV = {
-  JUMP: 1, GLIDE: 2, LAND: 4, SLIDE: 8, FASTFALL: 16, LEDGE: 32, AIRJUMP: 64,
+  JUMP: 1, GLIDE: 2, LAND: 4, SLIDE: 8, FASTFALL: 16, LEDGE: 32, AIRJUMP: 64, BOUNCE: 128,
 };
 
 export function makePlayer(x = 0) {
@@ -54,6 +54,39 @@ function doJump(s, P) {
   s.ev |= EV.JUMP;
 }
 
+/** A bouncy mushroom launches Bramble. It's automatic: only what you do next is up to you. */
+function doBounce(s, P) {
+  s.vy = P.bounceV;
+  s.grounded = false;
+  s.coyote = 0;
+  s.airT = 0;
+  s.glideAvail = true;
+  s.gliding = false;
+  s.slideT = 0;
+  s.slideOnLand = false;
+  s.jumpCut = false;
+  s.jumpBuf = 0;
+  s.ev |= EV.BOUNCE;
+}
+
+/**
+ * Forward-speed multiplier at world x from a list of zones {x0,x1,mul} (dandelion fluff, wind gusts).
+ * Edges ramp softly over ZONES.ramp units. The game and the solver both call this exact function.
+ */
+export function zoneMul(zones, x) {
+  let m = 1;
+  if (!zones) return m;
+  for (let i = 0; i < zones.length; i++) {
+    const z = zones[i];
+    if (z.mul === 1) continue;
+    const d = Math.min(x - z.x0, z.x1 - x);
+    if (d <= 0) continue;
+    const u = d >= ZONES.ramp ? 1 : d / ZONES.ramp;
+    m *= 1 + (z.mul - 1) * u * u * (3 - 2 * u);
+  }
+  return m;
+}
+
 /**
  * Advance Bramble by one fixed step.
  * @param s     player state (mutated)
@@ -61,8 +94,9 @@ function doJump(s, P) {
  * @param dt    seconds (always 1/60)
  * @param speed world speed this tick (units/second)
  * @param groundAt (x)=>bool  is there island under this x?
+ * @param padAt   optional (x)=>bool  is there a bouncy mushroom under this x?
  */
-export function stepPlayer(s, inp, dt, speed, groundAt, P = PLAYER) {
+export function stepPlayer(s, inp, dt, speed, groundAt, P = PLAYER, padAt = null) {
   s.ev = 0;
   s.held = !!inp.hold;
   if (s.coyote > 0) s.coyote -= dt;
@@ -126,6 +160,7 @@ export function stepPlayer(s, inp, dt, speed, groundAt, P = PLAYER) {
     } else {
       s.y = 0;
       s.vy = 0;
+      if (padAt && padAt(s.x)) doBounce(s, P);
     }
   }
 
@@ -157,7 +192,8 @@ export function stepPlayer(s, inp, dt, speed, groundAt, P = PLAYER) {
         s.slideT = P.slideOnLand;
         s.ev |= EV.SLIDE;
       }
-      if (s.jumpBuf > 0) doJump(s, P);
+      if (padAt && padAt(s.x)) doBounce(s, P);
+      else if (s.jumpBuf > 0) doJump(s, P);
     }
   }
 }
