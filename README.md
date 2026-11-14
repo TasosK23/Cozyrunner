@@ -1,7 +1,5 @@
 # Emberwing Run
 
-*(working title: the final name is still to be decided)*
-
 A dark-fantasy dragon endless runner for phone browsers. You are **Cinder**, a Smaug-style red dragon with a gem-studded golden belly, fleeing the ashfall across broken islands in a burning sky. Tap to leap, swipe down to dive under iron traps, hold in the air to spread your wings and glide.
 
 Everything is made in code: no image files, no audio files, no libraries, no build step, no CDN, no accounts, no tracking. Plain HTML5 canvas, CSS and JavaScript modules. It installs on a phone like an app and plays offline.
@@ -77,7 +75,7 @@ When you push a new version, the next time the game is opened with a connection 
 
 ## Save data
 
-- Progress is saved on **this device**, in the browser's local storage (key `lanternfold.save`; the name is a leftover from the project's first working title and is kept so early saves keep working). It is one versioned JSON document (now version 3). Older versions upgrade automatically, and a repair pass fixes or drops anything damaged instead of crashing.
+- Progress is saved on **this device**, in the browser's local storage (key `lanternfold.save`; the name is a leftover from the game's first version and is kept so early saves keep working). It is one versioned JSON document (now version 3). Older versions upgrade automatically, and a repair pass fixes or drops anything damaged instead of crashing.
 - **Back it up:** **Settings > Save data > Show my code** gives a code that starts with `EW3.` Copy it somewhere safe. **Restore from code** puts it back (older `LF` codes still work). A mistyped or damaged code is refused and changes nothing. There is no cloud sync.
 - Clearing the browser's site data, or uninstalling the app, erases the save. On an iPhone the Home Screen app can have its own separate save, apart from Safari: move progress across with a code.
 
@@ -139,6 +137,20 @@ Visual checks write PNGs to `screenshots/` (not committed): `tests/gallery*.py` 
 - `src/ui/`: title, pause and game-over screens, menu sheets, toasts, icons, the debug panel
 - `tests/`, `tools/`, `.githooks/`: tests, the asset tool, the pre-commit hook
 
+## Code names
+
+The game started as a cosy critter runner and was re-skinned into a dragon game. Everything the player sees is dragon-themed, but many internal ids kept their first names so saves, tests and level data kept working. When you read the code, translate like this:
+
+| In the code | In the game |
+|---|---|
+| `Bramble`, `bramble.js`, `BrambleVisual` | Cinder, the dragon (the drawing code) |
+| hazards `snail`, `vine`, `drop`; `pad` | magma crawler, iron portcullis, falling cinder; steam vent |
+| pickups `seed`, `lantern`, `tea`, `firefly`, `letter` | ember shard, brazier, dragon heart, phoenix wisp, F-I-R-E rune |
+| power-ups `honey`, `hop`, `dash`, `burst`, `blanket` | Gold Magnet, Wing Gust, Inferno Dash, Firestorm, Scale Shield |
+| biomes `meadow`, `teacup`, `grove`, `heights`, `lake` | Ashen Highlands, Ruined Keep, Emberdeep Caverns, Stormspire Peaks, Obsidian Lava Lake |
+| save fields `seedsBank`, `chests.pending`, `companions` | embers, eggs, war beasts |
+| storage key `lanternfold.save` | the save itself |
+
 ## Known limitations
 
 - Real-phone frame rate and sound quality are untested; everything above was checked in headless Chrome (see Performance).
@@ -149,4 +161,4 @@ Visual checks write PNGs to `screenshots/` (not committed): `tests/gallery*.py` 
 
 ## Licence
 
-No licence has been chosen yet, so by default all rights are reserved. A licence file will be added once the owner decides.
+Copyright (c) 2026 TasosK23. **All rights reserved.** No licence is granted to copy, modify, distribute or sell this software without the owner's written permission. See `LICENSE`.
