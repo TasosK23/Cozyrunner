@@ -1,7 +1,7 @@
 /**
  * terrain.js — the floating islands Bramble runs on, drawn from the run's ground segments.
  * Everything is built from paths each frame (only the visible slice of each island), so an
- * island can be any length. Decorations (flowers, roots, pebbles, grass tufts) are placed by a
+ * island can be any length. Decorations (spikes, roots, pebbles, ash tufts) are placed by a
  * position hash, so they never flicker or shift as you scroll.
  */
 import { hash2 } from '../core/rng.js';
@@ -92,58 +92,68 @@ export class Terrain {
       ctx.stroke();
     }
 
-    // ---- bushes standing on the island (behind the grass lip)
+    // ---- jagged rocks and dead scrub standing on the island (behind the lip)
     const b0 = Math.floor(a / 173);
     const b1 = Math.floor(b / 173);
     for (let k = b0; k <= b1; k++) {
       if (hash2(k, 41) < 0.4) continue;
       const x = k * 173 + hash2(k, 42) * 130;
       if (x < a + 22 || x > b - 22) continue;
-      const sc = 0.7 + hash2(k, 43) * 0.6;
+      const sc = 0.7 + hash2(k, 43) * 0.7;
       const bx = x - camX;
       ctx.fillStyle = pal.bush[k & 1];
       ctx.beginPath();
-      ctx.arc(bx, groundY - 7 * sc, 13 * sc, Math.PI, 0);
-      ctx.arc(bx + 13 * sc, groundY - 3 * sc, 9 * sc, Math.PI * 1.15, Math.PI * 0.05);
-      ctx.arc(bx - 13 * sc, groundY - 3 * sc, 9 * sc, Math.PI * 0.95, Math.PI * 1.85);
-      ctx.fill();
-      ctx.fillStyle = 'rgba(255,255,255,0.14)';
-      ctx.beginPath(); ctx.arc(bx - 4 * sc, groundY - 14 * sc, 5 * sc, 0, TAU); ctx.fill();
+      ctx.moveTo(bx - 15 * sc, groundY - 2);
+      ctx.lineTo(bx - 11 * sc, groundY - 11 * sc);
+      ctx.lineTo(bx - 4 * sc, groundY - 15 * sc);
+      ctx.lineTo(bx + 3 * sc, groundY - 12 * sc);
+      ctx.lineTo(bx + 11 * sc, groundY - 17 * sc);
+      ctx.lineTo(bx + 16 * sc, groundY - 2);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.1)';
+      ctx.beginPath(); ctx.moveTo(bx - 4 * sc, groundY - 15 * sc); ctx.lineTo(bx + 3 * sc, groundY - 12 * sc); ctx.lineTo(bx - 1 * sc, groundY - 5 * sc); ctx.closePath(); ctx.fill();
     }
 
-    // ---- grass lip
+    // ---- stone lip: a cracked slab edge with a glowing ember seam
     const gx = a - camX;
     const gw = b - a;
     const capL = x0 >= L ? 6 : 0;
     const capR = x1 <= R ? 6 : 0;
     ctx.fillStyle = pal.grass;
     ctx.beginPath();
-    if (ctx.roundRect) ctx.roundRect(gx - capL, groundY - 8, gw + capL + capR, 17, 8);
+    if (ctx.roundRect) ctx.roundRect(gx - capL, groundY - 8, gw + capL + capR, 17, 3);
     else ctx.rect(gx - capL, groundY - 8, gw + capL + capR, 17);
     ctx.fill();
     ctx.strokeStyle = pal.grassLight; ctx.lineWidth = 2.4;
     ctx.beginPath(); ctx.moveTo(gx + 2, groundY - 5); ctx.lineTo(gx + gw - 2, groundY - 5); ctx.stroke();
     ctx.strokeStyle = pal.grassDark; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.moveTo(gx - capL + 4, groundY + 8); ctx.lineTo(gx + gw + capR - 4, groundY + 8); ctx.stroke();
+    // slab joints
+    ctx.strokeStyle = 'rgba(0,0,0,0.35)'; ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    const j0 = Math.floor(a / 46); const j1 = Math.floor(b / 46);
+    for (let k = j0; k <= j1; k++) { const x = k * 46 + hash2(k, 51) * 10 - camX; if (x < gx || x > gx + gw) continue; ctx.moveTo(x, groundY - 5); ctx.lineTo(x - 2, groundY + 8); }
+    ctx.stroke();
+    // a thin glowing seam under the lip
+    ctx.strokeStyle = 'rgba(255,110,40,0.55)'; ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.moveTo(gx + 3, groundY + 9.5); ctx.lineTo(gx + gw - 3, groundY + 9.5); ctx.stroke();
 
-    // ---- flowers on top
+    // ---- small spikes of bone, crystal and cold embers on top (instead of flowers)
     const f0 = Math.floor(a / 74);
     const f1 = Math.floor(b / 74);
     for (let k = f0; k <= f1; k++) {
       if (hash2(k, 21) < 0.45) continue;
       const x = k * 74 + hash2(k, 22) * 60;
       if (x < a + 8 || x > b - 8) continue;
-      const hgt = 7 + hash2(k, 23) * 8;
-      ctx.strokeStyle = '#5ea34f'; ctx.lineWidth = 1.6;
-      ctx.beginPath(); ctx.moveTo(x - camX, groundY - 6); ctx.lineTo(x - camX, groundY - 6 - hgt); ctx.stroke();
+      const hgt = 6 + hash2(k, 23) * 9;
+      const xx = x - camX;
       ctx.fillStyle = pal.flowers[(hash2(k, 24) * pal.flowers.length) | 0];
-      ctx.beginPath(); ctx.arc(x - camX, groundY - 6 - hgt, 3.5, 0, TAU); ctx.fill();
-      ctx.fillStyle = '#ffd35c';
-      ctx.beginPath(); ctx.arc(x - camX, groundY - 6 - hgt, 1.3, 0, TAU); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(xx - 3, groundY - 6); ctx.lineTo(xx + 0.5, groundY - 6 - hgt); ctx.lineTo(xx + 3, groundY - 6); ctx.closePath(); ctx.fill();
+      if (hash2(k, 25) > 0.55) { ctx.beginPath(); ctx.moveTo(xx + 3, groundY - 6); ctx.lineTo(xx + 6, groundY - 6 - hgt * 0.6); ctx.lineTo(xx + 8, groundY - 6); ctx.closePath(); ctx.fill(); }
     }
   }
 
-  /** Little grass blades drawn AFTER Bramble so he runs "through" the lawn. */
+  /** Little ash-tufts / jagged shards drawn AFTER Cinder so he runs "through" the rubble. */
   drawFront(ctx, run, camX, groundY, viewW, pal) {
     const draw = (x0, x1) => {
       const a = Math.max(x0, camX - 20);
@@ -159,7 +169,8 @@ export class Terrain {
         const h = 5 + hash2(k, 32) * 7;
         const lean = (hash2(k, 33) - 0.5) * 6;
         ctx.moveTo(x - camX, groundY + 3);
-        ctx.quadraticCurveTo(x - camX + lean * 0.3, groundY - h * 0.5, x - camX + lean, groundY - h);
+        ctx.lineTo(x - camX + lean * 0.4, groundY - h * 0.55);
+        ctx.lineTo(x - camX + lean, groundY - h * 0.9);
       }
       ctx.stroke();
     };

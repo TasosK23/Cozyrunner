@@ -69,7 +69,7 @@ export class UI {
     document.querySelector('.tiles').classList.toggle('hidden', !meta);
     $('#title-seeds').classList.toggle('hidden', !meta);
     if (!meta) return;
-    $('#title-seeds').textContent = `${(info.seeds || 0).toLocaleString('en-US')} glow-seeds`;
+    $('#title-seeds').textContent = `${(info.seeds || 0).toLocaleString('en-US')} embers`;
     $('#daily-label').textContent = info.dailyDone ? 'Daily Run again' : 'Daily Run';
     const b = $('#daily-badge');
     b.classList.toggle('hidden', !(info.streak > 0));
@@ -78,11 +78,11 @@ export class UI {
     for (const k of ['companions', 'upgrades', 'quests']) $(`#dot-${k}`).classList.toggle('hidden', !dots[k]);
   }
 
-  /** After the acorn sheet closes on the game-over card: update the button. */
+  /** After the egg sheet closes on the game-over card: update the button. */
   refreshOverChests(n) {
     const cb = $('#btn-chest');
     cb.classList.toggle('hidden', !(n > 0));
-    cb.textContent = `Open Mystery Acorn (${n})`;
+    cb.textContent = `Hatch Dragon Egg (${n})`;
   }
 
   /** Is any menu sheet showing? */
@@ -107,20 +107,20 @@ export class UI {
     const esc = (v) => String(v).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
     if (s.daily) {
       const d = s.daily;
-      parts.push(`<div class="xrow gold">Daily Run: streak ${d.streak} day${d.streak === 1 ? '' : 's'}${d.usedFreeze ? ' (a freeze saved it)' : ''}${d.bonusSeeds ? ` · +${d.bonusSeeds} seeds` : ''}${d.chest ? ' · mystery acorn!' : ''}</div>`);
+      parts.push(`<div class="xrow gold">Daily Run: streak ${d.streak} day${d.streak === 1 ? '' : 's'}${d.usedFreeze ? ' (a freeze saved it)' : ''}${d.bonusSeeds ? ` · +${d.bonusSeeds} embers` : ''}${d.chest ? ' · dragon egg!' : ''}</div>`);
     }
-    for (const q of s.quests || []) parts.push(`<div class="xrow">Quest done: ${esc(q.text)} · +${q.reward} seeds</div>`);
-    if (s.weekly) parts.push(`<div class="xrow gold">Weekly challenge done: ${esc(s.weekly.text)} · +${s.weekly.reward} seeds + acorn</div>`);
-    for (const c of s.unlocked || []) parts.push(`<div class="xrow gold">${esc(c.name)} (${esc(c.kind)}) wants to join Bramble! Find it under Friends.</div>`);
-    for (const m of s.biomes || []) parts.push(`<div class="xrow">New place discovered: ${esc(m)}</div>`);
+    for (const q of s.quests || []) parts.push(`<div class="xrow">Quest done: ${esc(q.text)} · +${q.reward} embers</div>`);
+    if (s.weekly) parts.push(`<div class="xrow gold">Weekly challenge done: ${esc(s.weekly.text)} · +${s.weekly.reward} embers + egg</div>`);
+    for (const c of s.unlocked || []) parts.push(`<div class="xrow gold">${esc(c.name)} (${esc(c.kind)}) answers Cinder's call! Find it under Beasts.</div>`);
+    for (const m of s.biomes || []) parts.push(`<div class="xrow">New land reached: ${esc(m)}</div>`);
     if (s.next) {
       const pct = Math.round(s.next.pr.pct * 100);
-      parts.push(`<div class="xnext">${pct}% to a new friend: ${esc(s.next.comp.unlock.text.replace('{n}', s.next.comp.unlock.target))}<div class="mini"><i style="width:${pct}%"></i></div></div>`);
+      parts.push(`<div class="xnext">${pct}% to a new war-beast: ${esc(s.next.comp.unlock.text.replace('{n}', s.next.comp.unlock.target))}<div class="mini"><i style="width:${pct}%"></i></div></div>`);
     }
     x.innerHTML = parts.join('');
     const cb = $('#btn-chest');
     cb.classList.toggle('hidden', !(s.chests > 0));
-    cb.textContent = `Open Mystery Acorn (${s.chests || 0})`;
+    cb.textContent = `Hatch Dragon Egg (${s.chests || 0})`;
   }
 
   /**

@@ -115,7 +115,7 @@ export const SPAWN = {
   powerChance: 0.10, powerMinM: 120, powerMinGapM: 150,
 };
 
-export const WORD = ['C', 'O', 'Z', 'Y'];
+export const WORD = ['F', 'I', 'R', 'E'];
 
 /** Difficulty director. */
 export const DIRECTOR = {
