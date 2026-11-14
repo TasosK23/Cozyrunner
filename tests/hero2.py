@@ -20,7 +20,7 @@ try:
     if LOW: pg.evaluate("async()=>{const m=await import('/src/core/quality.js'); m.quality.set(2);}")
     # ground y in CSS px
     gy=pg.evaluate("()=>Math.round(innerHeight*0.68)")
-    def shot(name, js, mode='running', up=110, w=200, x0=0):
+    def shot(name, js, mode='running', up=150, w=200, x0=0):
         pg.evaluate("()=>{const r=__cozy.run;r.p.slideT=0;r.pu.dash=0;r.pu.burst=0;r.glow=0;r.invuln=0;r.state='running';const v=__cozy.renderer.vis;v.hurt=0;}")
         pg.evaluate(js)
         pg.evaluate(SETTLE.replace('MODE',f"'{mode}'"))
