@@ -16,6 +16,7 @@
  *           hurt (shudder + sparks), idle (breathing, smoke, fire-yawn), knocked-out (head droops, wings limp)
  */
 import { quality } from '../core/quality.js';
+import { resolveLook, SLOTS } from '../data/cosmetics.js';
 
 const TAU = Math.PI * 2;
 const C = {
@@ -27,11 +28,18 @@ const C = {
   claw: '#e9dcc0',
   wing: '#8d2a22', wingDark: '#4a1210', wingBone: '#2a0d0c', wingLight: '#c0452e',
   ember: '#ff7a2a', emberHot: '#ffd36a',
+  fire: [255, 130, 40], fireHot: [255, 214, 110],     // the flame colour (breath, glows, blazing spines): a wardrobe slot
   spine: '#2b0f0e',
 };
+/** The untouched default palette; a wardrobe look is merged over a copy of it (see setLook). */
+const BASE = { ...C };
+const glowCache = new Map();
+const mixc = (a, b, u) => [Math.round(a[0] + (b[0] - a[0]) * u), Math.round(a[1] + (b[1] - a[1]) * u), Math.round(a[2] + (b[2] - a[2]) * u)];
+const rgba = (c, a) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
+const WHITE = [255, 255, 255];
 
 const lerp = (a, b, u) => a + (b - a) * u;
-const blazeColor = (u) => `rgb(${Math.round(lerp(43, 255, u))},${Math.round(lerp(15, 135, u))},${Math.round(lerp(14, 40, u))})`;
+const blazeColor = (u) => `rgb(${Math.round(lerp(43, C.fire[0], u))},${Math.round(lerp(15, C.fire[1], u))},${Math.round(lerp(14, C.fire[2], u))})`;
 
 /** Catmull-Rom through [x, y, width] control points -> dense samples. */
 function catmull(P, seg) {
@@ -135,11 +143,25 @@ export class BrambleVisual {
     c.width = c.height = 128;
     const g = c.getContext('2d');
     const gr = g.createRadialGradient(64, 64, 0, 64, 64, 64);
-    gr.addColorStop(0, 'rgba(255,170,70,0.95)');
-    gr.addColorStop(0.35, 'rgba(255,110,40,0.42)');
-    gr.addColorStop(1, 'rgba(255,80,20,0)');
+    gr.addColorStop(0, rgba(mixc(C.fire, C.fireHot, 0.45), 0.95));
+    gr.addColorStop(0.35, rgba(C.fire, 0.42));
+    gr.addColorStop(1, rgba(mixc(C.fire, [0, 0, 0], 0.2), 0));
     g.fillStyle = gr; g.fillRect(0, 0, 128, 128);
     return c;
+  }
+
+  /**
+   * Apply a wardrobe look: `ids` = {scales, horns, eyes, flame} cosmetic ids. Cheap when nothing changed, and the
+   * flame glow sprite is cached per colour, so flipping between looks (the wardrobe preview) allocates nothing.
+   */
+  setLook(ids) {
+    const key = SLOTS.map((sl) => (ids && ids[sl.id]) || '').join('|');
+    if (key === this._lookKey) return;
+    this._lookKey = key;
+    Object.assign(C, BASE, resolveLook(ids));
+    const fk = C.fire.join(',');
+    if (!glowCache.has(fk)) glowCache.set(fk, this._makeGlow());
+    this.glow = glowCache.get(fk);
   }
 
   /** Called by juice.js on gameplay events to kick the springs. */
@@ -391,8 +413,8 @@ export class BrambleVisual {
     if (run.bubble) {
       ctx.save();
       const g = ctx.createRadialGradient(x - 24, y - 44, 4, x - 16, y - 33, 62);
-      g.addColorStop(0, 'rgba(255,220,150,0.35)'); g.addColorStop(0.7, 'rgba(255,120,50,0.18)'); g.addColorStop(1, 'rgba(255,90,30,0.6)');
-      ctx.fillStyle = g; ctx.strokeStyle = 'rgba(255,190,110,0.95)'; ctx.lineWidth = 2;
+      g.addColorStop(0, rgba(mixc(C.fireHot, WHITE, 0.3), 0.35)); g.addColorStop(0.7, rgba(C.fire, 0.18)); g.addColorStop(1, rgba(mixc(C.fire, [0, 0, 0], 0.15), 0.6));
+      ctx.fillStyle = g; ctx.strokeStyle = rgba(mixc(C.fire, C.fireHot, 0.6), 0.95); ctx.lineWidth = 2;
       ctx.beginPath(); ctx.ellipse(x - 16, y - 33, 62 + Math.sin(t * 6) * 1.4, 46 + Math.sin(t * 6) * 1.2, 0, 0, TAU); ctx.fill(); ctx.stroke();
       ctx.restore();
     }
@@ -423,7 +445,7 @@ export class BrambleVisual {
     const rot = (px, py) => [pvx + px * Math.cos(ja) - py * Math.sin(ja), pvy + px * Math.sin(ja) + py * Math.cos(ja)];
     if (open) {
       const jt = rot(23, 2.2); const jm = rot(8, -1.2);
-      ctx.fillStyle = blaze > 0.05 || breath > 0 ? '#ff6a2a' : '#7a1418';
+      ctx.fillStyle = blaze > 0.05 || breath > 0 ? rgba(C.fire, 1) : '#7a1418';
       ctx.beginPath(); ctx.moveTo(-3, 5.5); ctx.lineTo(8, 4.4); ctx.lineTo(23.5, 3.4); ctx.lineTo(jt[0], jt[1]); ctx.lineTo(jm[0], jm[1]); ctx.closePath(); ctx.fill();
     }
     // lower jaw
@@ -500,7 +522,7 @@ export class BrambleVisual {
     if (breath > 0.02) {
       const jt = rot(22, 1.2);
       ctx.save(); ctx.translate(jt[0] - 1, jt[1] - 1.2 + (open ? 0 : 0)); ctx.globalCompositeOperation = 'lighter';
-      const cols = ['rgba(255,90,30,0.75)', 'rgba(255,165,55,0.85)', 'rgba(255,238,170,0.95)'];
+      const cols = [rgba(mixc(C.fire, [0, 0, 0], 0.15), 0.75), rgba(mixc(C.fire, C.fireHot, 0.4), 0.85), rgba(mixc(C.fireHot, WHITE, 0.45), 0.95)];
       for (let k = 0; k < 3; k++) {
         const L = (34 - k * 7 + Math.sin(t * 24 + k * 2) * 4) * breath;
         const wd = (10 - k * 2.6) * breath;

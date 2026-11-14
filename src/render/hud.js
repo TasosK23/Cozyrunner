@@ -24,6 +24,8 @@ function heart(ctx, x, y, s, fill, stroke) {
 export class Hud {
   constructor() {
     this.banner = null;     // {text, t, max, color}
+    this.scale = 1;         // 'Large text' multiplier
+    this.mirror = false;    // 'Left-handed' layout
     this.multPulse = 0;
     this.heartPulse = 0;
     this.lastMult = 1;
@@ -51,9 +53,16 @@ export class Hud {
   draw(ctx, run, W, H, safe) {
     if (run.state === 'ready' || run.state === 'over') return;
     const top = safe.top + 10;
-    const left = safe.left + 14;
+    const kk = this.scale || 1;
+    // left-handed layout: the hearts and flame meter move to the right, the pause button takes the left corner
+    const left = this.mirror ? W - safe.right - 14 - Math.max(112, 16 + run.maxHearts * 27) * kk : safe.left + 14;
+
+    const k = this.scale || 1;                          // "Large text" setting: grow each HUD block around its anchor
+    const grow = (ox, oy) => { if (k !== 1) { ctx.save(); ctx.translate(ox, oy); ctx.scale(k, k); ctx.translate(-ox, -oy); } };
+    const done = () => { if (k !== 1) ctx.restore(); };
 
     // ---- hearts
+    grow(left, top);
     for (let i = 0; i < run.maxHearts; i++) {
       const x = left + 10 + i * 27;
       const full = i < run.hearts;
@@ -79,8 +88,11 @@ export class Hud {
     ctx.beginPath(); ctx.moveTo(left + 9, gy - 4); ctx.quadraticCurveTo(left + 17, gy + 5, left + 14, gy + 11); ctx.quadraticCurveTo(left + 9, gy + 16, left + 4, gy + 11); ctx.quadraticCurveTo(left + 1, gy + 5, left + 9, gy - 4); ctx.closePath(); ctx.fill(); ctx.stroke();
     if (gf > 0) { ctx.fillStyle = '#ffd36a'; ctx.beginPath(); ctx.ellipse(left + 9, gy + 9, 2.6, 4, 0, 0, TAU); ctx.fill(); }
 
+    done();
+
     // ---- score + distance (center)
     const cx = W / 2;
+    grow(cx, top);
     ctx.textAlign = 'center'; ctx.lineJoin = 'round';
     ctx.font = `900 36px ${FONT}`;
     ctx.lineWidth = 6; ctx.strokeStyle = INK;
@@ -123,6 +135,7 @@ export class Hud {
       ctx.restore();
     }
     ctx.textBaseline = 'alphabetic'; ctx.globalAlpha = 1;
+    done();
 
     // ---- hint bubble
     if (this.hintAlpha > 0.02 && this.hintKey) {
@@ -131,11 +144,13 @@ export class Hud {
       const sub = t(`hint.${this.hintKey}.sub`);
       const by = H * 0.36 + (1 - a) * 8;
       ctx.save(); ctx.globalAlpha = a;
+      if (k !== 1) { ctx.translate(cx, by); ctx.scale(k, k); ctx.translate(-cx, -by); }
+      const Wk = W / k;
       let fs = 22;                                       // shrink long hints so they always fit the bubble
       ctx.font = `900 ${fs}px ${FONT}`;
-      const room = W - 36 - 44;
+      const room = Wk - 36 - 44;
       if (ctx.measureText(main).width > room) { fs = Math.max(13, Math.floor((fs * room) / ctx.measureText(main).width)); ctx.font = `900 ${fs}px ${FONT}`; }
-      const w = Math.min(W - 36, Math.max(ctx.measureText(main).width, 200) + 44);
+      const w = Math.min(Wk - 36, Math.max(ctx.measureText(main).width, 200) + 44);
       ctx.fillStyle = 'rgba(24,14,20,0.9)'; ctx.strokeStyle = 'rgba(255,150,70,0.8)'; ctx.lineWidth = 2.5;
       ctx.beginPath(); ctx.roundRect ? ctx.roundRect(cx - w / 2, by - 30, w, 62, 8) : ctx.rect(cx - w / 2, by - 30, w, 62);
       ctx.fill(); ctx.stroke();
@@ -150,7 +165,7 @@ export class Hud {
       const age = b.max - b.t;
       const pop = age < 0.25 ? 0.5 + (age / 0.25) * 0.65 : age < 0.4 ? 1.15 - (age - 0.25) * 1 : 1;
       const fade = b.t < 0.4 ? b.t / 0.4 : 1;
-      ctx.save(); ctx.globalAlpha = fade; ctx.translate(cx, H * 0.24); ctx.scale(pop, pop);
+      ctx.save(); ctx.globalAlpha = fade; ctx.translate(cx, H * 0.24); ctx.scale(pop * k, pop * k);
       ctx.font = `900 40px ${FONT}`; ctx.lineWidth = 8; ctx.strokeStyle = INK;
       ctx.strokeText(b.text, 0, 0); ctx.fillStyle = b.color; ctx.fillText(b.text, 0, 0);
       ctx.restore();

@@ -75,7 +75,7 @@ export class UI {
     b.classList.toggle('hidden', !(info.streak > 0));
     b.textContent = `${info.streak || 0} day${info.streak === 1 ? '' : 's'}`;
     const dots = info.dots || {};
-    for (const k of ['companions', 'upgrades', 'quests']) $(`#dot-${k}`).classList.toggle('hidden', !dots[k]);
+    for (const k of ['companions', 'upgrades', 'quests', 'wardrobe', 'settings']) $(`#dot-${k}`).classList.toggle('hidden', !dots[k]);
   }
 
   /** After the egg sheet closes on the game-over card: update the button. */
@@ -111,6 +111,8 @@ export class UI {
     }
     for (const q of s.quests || []) parts.push(`<div class="xrow">Quest done: ${esc(q.text)} · +${q.reward} embers</div>`);
     if (s.weekly) parts.push(`<div class="xrow gold">Weekly challenge done: ${esc(s.weekly.text)} · +${s.weekly.reward} embers + egg</div>`);
+    for (const a of s.trophies || []) parts.push(`<div class="xrow gold">Trophy earned: ${esc(a.name)} · +${a.embers} embers</div>`);
+    for (const c of s.looks || []) parts.push(`<div class="xrow gold">New look for Cinder: ${esc(c.name)} (${esc(c.slotName)}). Find it in the Wardrobe.</div>`);
     for (const c of s.unlocked || []) parts.push(`<div class="xrow gold">${esc(c.name)} (${esc(c.kind)}) answers Cinder's call! Find it under Beasts.</div>`);
     for (const m of s.biomes || []) parts.push(`<div class="xrow">New land reached: ${esc(m)}</div>`);
     if (s.next) {

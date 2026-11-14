@@ -10,9 +10,11 @@
 import { storage } from './storage.js';
 import { COMPANIONS } from '../data/companions.js';
 import { UPGRADES } from '../data/upgrades.js';
+import { ACHIEVEMENTS } from '../data/achievements.js';
+import { COSMETICS, COSMETIC_BY_ID, DEFAULT_LOOK, SLOTS } from '../data/cosmetics.js';
 
 export const SAVE_KEY = 'lanternfold.save';
-export const VERSION = 2;
+export const VERSION = 3;
 
 export function defaultSave() {
   return {
@@ -24,7 +26,7 @@ export function defaultSave() {
     stats: {
       runs: 0, totalDistance: 0, totalSeeds: 0, totalSeconds: 0,
       lanterns: 0, fireflies: 0, words: 0, nearMisses: 0, glideGaps: 0, gaps: 0, hits: 0,
-      bestCombo: 0, longestRun: 0,
+      bestCombo: 0, longestRun: 0, cleanBest: 0,
       powerups: 0, vinesSlid: 0, bounces: 0, perfectBeats: 0, festivals: 0, biomesSeen: 0, surprises: 0, dailyRuns: 0,
       runsByCompanion: Object.fromEntries(COMPANIONS.map((c) => [c.id, 0])),
     },
@@ -32,6 +34,20 @@ export function defaultSave() {
     settings: {
       haptics: true, music: true, sfx: true, musicVol: 0.7, sfxVol: 0.9,
       shake: true, reducedMotion: false, breakReminder: true,
+      flashes: true,            // false = no white screen flashes
+      highContrast: false,      // bright outlines on hazards + pickups, calmer backdrop
+      largeText: false,         // bigger HUD and menu text
+      leftHanded: false,        // pause button and menu chips on the left
+      tapSlide: false,          // tap the lower part of the screen to slide (no swipe needed)
+      gentle: false,            // forgiving mode: one extra heart (not used on the Daily Run)
+      quality: 'auto',          // auto | high | medium | low
+      showFps: false,
+    },
+    achievements: Object.fromEntries(ACHIEVEMENTS.map((a) => [a.id, 0])),   // id -> time unlocked (0 = locked)
+    cosmetics: {
+      owned: Object.fromEntries(COSMETICS.map((c) => [c.id, !!c.unlock.default])),
+      seen: Object.fromEntries(COSMETICS.map((c) => [c.id, !!c.unlock.default])),   // "NEW" badge cleared once looked at
+      equipped: { ...DEFAULT_LOOK },
     },
     upgrades: Object.fromEntries(UPGRADES.map((u) => [u.id, 0])),
     companions: {
@@ -43,7 +59,7 @@ export function defaultSave() {
     weekly: { week: '', id: '', progress: 0, target: 0, claimed: false },
     daily: { date: '', best: 0, bestScore: 0, plays: 0, streak: 0, bestStreak: 0, lastDay: '', freezes: 1, freezeWeek: '', bonusDay: '' },
     chests: { pity: 0, opened: 0, pending: 0 },
-    seenBiomes: [],                // biome ids the player has visited (for the Stage 3 collection / achievements)
+    seenBiomes: [],                // biome ids the player has visited (for trophies)
   };
 }
 
@@ -60,7 +76,7 @@ function repair(template, raw) {
     if (want !== null && typeof want === 'object' && !Array.isArray(want)) {
       template[key] = repair(want, got);
     } else if (typeof want === 'number') {
-      if (typeof got === 'number' && Number.isFinite(got)) template[key] = Math.max(-1e12, Math.min(1e12, got));
+      if (typeof got === 'number' && Number.isFinite(got)) template[key] = Math.max(-1e13, Math.min(1e13, got));
     } else if (Array.isArray(want)) {
       if (Array.isArray(got)) template[key] = got;
     } else if (typeof want === typeof got) {
@@ -72,6 +88,8 @@ function repair(template, raw) {
 
 /** MIGRATIONS[n] upgrades a version-n save object to version n+1. (None needed yet.) */
 const MIGRATIONS = {
+  // v2 -> v3 (Stage 3): trophies, wardrobe and the accessibility settings arrive with their defaults.
+  2: (s) => { s.v = 3; return s; },
   // v1 -> v2 (Stage 2): everything new is added by the repair step's defaults; nothing to convert.
   1: (s) => { s.v = 2; return s; },
 };
@@ -85,12 +103,24 @@ function migrate(raw) {
   return s;
 }
 
+/** Final sanity pass: equipped looks must exist and be owned; the quality setting must be a known word. */
+function sanitize(d) {
+  for (const slot of SLOTS) {
+    const id = d.cosmetics.equipped[slot.id];
+    const c = COSMETIC_BY_ID[id];
+    if (!c || c.slot !== slot.id || !d.cosmetics.owned[id]) d.cosmetics.equipped[slot.id] = DEFAULT_LOOK[slot.id];
+  }
+  if (!['auto', 'high', 'medium', 'low'].includes(d.settings.quality)) d.settings.quality = 'auto';
+  d.v = VERSION;
+  return d;
+}
+
 /** Parse + migrate + repair. Always returns a valid save object. */
 export function parseSave(text) {
   try {
     const raw = JSON.parse(text);
     if (!raw || typeof raw !== 'object') return defaultSave();
-    return repair(defaultSave(), migrate(raw));
+    return sanitize(repair(defaultSave(), migrate(raw)));
   } catch (_) {
     return defaultSave();
   }
@@ -130,17 +160,17 @@ export class SaveStore {
     this.commit();
   }
 
-  /** Copy/paste text code for backups: "LF1." + base64(json) + "." + checksum. */
+  /** Copy/paste text code for backups: "EW3." + base64(json) + "." + checksum. */
   exportCode() {
     const json = JSON.stringify(this.data);
-    return `LF${VERSION}.${toBase64(json)}.${checksum(json)}`;
+    return `EW${VERSION}.${toBase64(json)}.${checksum(json)}`;
   }
 
   /** @returns {boolean} true if the code was valid and applied. */
   importCode(code) {
     try {
       const parts = String(code).trim().split('.');
-      if (parts.length !== 3 || !parts[0].startsWith('LF')) return false;
+      if (parts.length !== 3 || !(parts[0].startsWith('EW') || parts[0].startsWith('LF'))) return false;
       const json = fromBase64(parts[1]);
       if (checksum(json) !== parts[2]) return false;
       this.data = parseSave(json);

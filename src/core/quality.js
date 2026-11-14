@@ -9,6 +9,8 @@ const LEVELS = [
   { name: 'low',    dprCap: 1,    particles: 60,  ambient: false, lite: true },   // lite: the hero skips glows, the far wing and fine detail
 ];
 
+export const QUALITY_NAMES = LEVELS.map((l) => l.name);
+
 export const quality = {
   level: 0,
   get cfg() { return LEVELS[this.level]; },
@@ -22,12 +24,14 @@ export class QualityMonitor {
     this.ema = 16.7;
     this.slow = 0;
     this.warmup = 90;   // ignore the first frames
+    this.pinned = false; // true when the player picked a graphics level by hand: never change it automatically
   }
 
   /** Reset after the tab was hidden or a big layout change. */
   hiccup() { this.warmup = 60; this.slow = 0; }
 
   sample(frameMs) {
+    if (this.pinned) return;
     if (this.warmup > 0) { this.warmup--; return; }
     if (frameMs > 200) return;   // a pause, not slowness
     this.ema += (frameMs - this.ema) * 0.08;

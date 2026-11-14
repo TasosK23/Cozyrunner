@@ -44,6 +44,8 @@ export class Renderer {
     this.flash = 0;                       // soft white flash 0..1
     this.beat = 0;                        // music beat pulse 0..1
     this.reduced = false;
+    this.noFlash = false;                 // accessibility: never draw the white screen flash
+    this.contrast = false;                // high-contrast mode: dimmer backdrop, bright outlines on hazards and pickups
     this.blend = { a: 0, b: 0, u: 1 };
     this.weatherSeed = 1;
     this.titleCard = null;                // {name, sub, t}
@@ -228,6 +230,9 @@ export class Renderer {
       ctx.fillRect(-W, seaBottom - 1, W * 3, this.viewH - seaBottom + 80);
     }
 
+    // high contrast: knock the backdrop back so hazards and the floor stand out
+    if (this.contrast) { ctx.fillStyle = 'rgba(10,5,12,0.42)'; ctx.fillRect(-W, -200, W * 3, this.viewH + 400); }
+
     // ---- ambient
     if (quality.cfg.ambient) {
       if (pal.id === 'meadow' || band.a === 0 || band.b === 0) this._bats(ctx, camX, g, tt, band.a === 0 && band.b === 0 ? 1 : (band.a === 0 ? 1 - u : u));
@@ -244,7 +249,7 @@ export class Renderer {
     this.terrain.draw(ctx, run, camX, g, W, pal);
 
     // ---- hazards + pickups (+ best-run ghost)
-    drawProps(ctx, run, camX, g, tt, t('over.best'));
+    drawProps(ctx, run, camX, g, tt, t('over.best'), this.contrast);
 
     // ---- Bramble, power-up rings
     const px = W * VIEW.playerX;
@@ -265,7 +270,7 @@ export class Renderer {
     this._weather(ctx, band, u, W, g, tt, camX);
     if (night > 0.02) { ctx.fillStyle = `rgba(20,6,16,${0.18 * night})`; ctx.fillRect(0, 0, W, this.viewH); }
     if (this.beat > 0.01 && !this.reduced) { ctx.fillStyle = `rgba(255,150,70,${0.06 * this.beat})`; ctx.fillRect(0, 0, W, this.viewH); }
-    if (this.flash > 0.01) { ctx.fillStyle = `rgba(255,214,170,${0.5 * this.flash})`; ctx.fillRect(0, 0, W, this.viewH); }
+    if (this.flash > 0.01 && !this.noFlash) { ctx.fillStyle = `rgba(255,214,170,${0.5 * this.flash})`; ctx.fillRect(0, 0, W, this.viewH); }
 
     // ---- HUD in screen pixels
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);

@@ -62,7 +62,7 @@ try:
     check('game-over card visible', page.is_visible('#screen-over') and page.is_visible('#btn-again'))
     page.screenshot(path=f'{SHOTS}/03-gameover.png')
     saved = json.loads(page.evaluate("localStorage.getItem('lanternfold.save')"))
-    check('save written with version', saved.get('v') == 2 and saved['stats']['runs'] == 1, f"runs={saved['stats']['runs']} xp={saved['xp']} bank={saved['seedsBank']}")
+    check('save written with version', saved.get('v') == 3 and saved['stats']['runs'] == 1, f"runs={saved['stats']['runs']} xp={saved['xp']} bank={saved['seedsBank']}")
 
     # --- instant restart
     t0 = time.time(); page.wait_for_timeout(300); page.tap('#btn-again'); page.wait_for_function("__cozy.mode === 'running'", timeout=2000)

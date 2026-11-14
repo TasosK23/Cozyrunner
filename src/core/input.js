@@ -20,6 +20,7 @@ export class Input {
     this.pendingPress = 0;
     this.pendingSlide = 0;
     this.keyHold = false;
+    this.slideZone = 0;       // accessibility: > 0 = tapping below this fraction of the screen height slides (no swipe needed)
     this.onPause = null;
     this._out = { press: false, hold: false, slide: false };
 
@@ -53,6 +54,14 @@ export class Input {
     if (!this.enabled) return;
     e.preventDefault();
     try { this.target.setPointerCapture(e.pointerId); } catch (_) { /* not critical */ }
+    if (this.slideZone > 0) {
+      const r = this.target.getBoundingClientRect();
+      if (r.height > 0 && (e.clientY - r.top) / r.height >= this.slideZone) {
+        this.pendingSlide++;
+        this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY, t: performance.now(), decided: true, jump: false, swiped: true });
+        return;
+      }
+    }
     this.pointers.set(e.pointerId, {
       x: e.clientX, y: e.clientY, t: performance.now(),
       decided: false, jump: false, swiped: false,

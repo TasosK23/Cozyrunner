@@ -8,6 +8,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Emberwing">
+  <meta name="description" content="Emberwing Run: a dark-fantasy dragon endless runner. Plays offline and installs to your home screen.">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <title>Emberwing Run</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%276%27 fill=%27%23241420%27/%3E%3Cpath d=%27M16 3c3 5 8 8 8 14a8 8 0 0 1-16 0c0-3 2-5 3-7 1 2 2 3 3 3-1-4 0-7 2-10z%27 fill=%27%23ff6a2a%27/%3E%3Cpath d=%27M16 15c2 2 4 4 4 7a4 4 0 0 1-8 0c0-2 2-4 4-7z%27 fill=%27%23ffd36a%27/%3E%3C/svg%3E">
   <link rel="stylesheet" href="css/style.css">
@@ -33,13 +37,22 @@
         <button id="btn-play" class="btn big" data-i18n="title.play"></button>
         <button id="btn-daily" class="btn small ghost"><span id="daily-label">Daily Run</span><span class="badge hidden" id="daily-badge"></span></button>
         <nav class="tiles" aria-label="Menu">
-          <button class="tile" data-open="companions"><span class="tile-ic">&#128009;</span><span>Beasts</span><i class="dot hidden" id="dot-companions"></i></button>
-          <button class="tile" data-open="upgrades"><span class="tile-ic">&#9876;&#65039;</span><span>Forge</span><i class="dot hidden" id="dot-upgrades"></i></button>
-          <button class="tile" data-open="quests"><span class="tile-ic">&#128220;</span><span>Quests</span><i class="dot hidden" id="dot-quests"></i></button>
-          <button class="tile" data-open="settings"><span class="tile-ic">&#9881;&#65039;</span><span>Settings</span></button>
+          <div class="tile-row">
+            <button class="tile" data-open="companions"><span class="tile-ic">&#128009;</span><span>Beasts</span><i class="dot hidden" id="dot-companions"></i></button>
+            <button class="tile" data-open="upgrades"><span class="tile-ic">&#9876;&#65039;</span><span>Forge</span><i class="dot hidden" id="dot-upgrades"></i></button>
+            <button class="tile" data-open="quests"><span class="tile-ic">&#128220;</span><span>Quests</span><i class="dot hidden" id="dot-quests"></i></button>
+            <button class="tile" data-open="wardrobe"><span class="tile-ic">&#128081;</span><span>Wardrobe</span><i class="dot hidden" id="dot-wardrobe"></i></button>
+          </div>
+          <div class="tile-row">
+            <button class="tile" data-open="achievements"><span class="tile-ic">&#127942;</span><span>Trophies</span></button>
+            <button class="tile" data-open="stats"><span class="tile-ic">&#128202;</span><span>Stats</span></button>
+            <button class="tile" data-open="settings"><span class="tile-ic">&#9881;&#65039;</span><span>Settings</span><i class="dot hidden" id="dot-settings"></i></button>
+          </div>
         </nav>
+        
         <p class="pill soft" id="title-seeds"></p>
       </div>
+      <button id="btn-install" class="chip hidden">Install app</button>
       <button id="ver" class="ver" aria-hidden="true">v0.1.0</button>
     </section>
 
@@ -90,6 +103,9 @@
       <div id="menu-body" class="scroll"></div>
     </section>
 
+    <!-- trophy / unlock pop-ups -->
+    <div id="toasts" aria-live="polite"></div>
+
     <!-- gentle take-a-break note -->
     <aside id="break-note" class="break hidden" role="status">
       <p>You've been flying a long while. Even dragons rest: stretch, drink some water, rest your eyes.</p>
@@ -100,6 +116,7 @@
     <div id="safe-probe" aria-hidden="true"></div>
     <pre id="debug" class="hidden"></pre>
   </div>
+  <noscript><p style="color:#f4e4d2;font:16px sans-serif;padding:24px;text-align:center">Emberwing Run needs JavaScript. Please turn it on and reload.</p></noscript>
 
   <script type="module" src="src/main.js"></script>
 </body>

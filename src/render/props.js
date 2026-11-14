@@ -417,7 +417,26 @@ function drawGhost(ctx, x, g, t, label, hover) {
   ctx.restore();
 }
 
-export function drawProps(ctx, run, camX, groundY, t, bestLabel) {
+/** High-contrast aid: a bright double outline round a hazard's real hit area (chasms get edge posts). */
+function outlineHazard(ctx, h, camX, groundY, t) {
+  const x0 = h.x0 - camX; const w = h.x1 - h.x0;
+  ctx.save();
+  ctx.lineJoin = 'round';
+  if (h.type === 'gap') {
+    for (const x of [x0, x0 + w]) {
+      ctx.strokeStyle = '#000'; ctx.lineWidth = 6; ctx.beginPath(); ctx.moveTo(x, groundY - 26); ctx.lineTo(x, groundY + 4); ctx.stroke();
+      ctx.strokeStyle = '#7dffef'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x, groundY - 26); ctx.lineTo(x, groundY + 4); ctx.stroke();
+    }
+  } else {
+    const y0 = groundY - h.y1; const hh = h.y1 - h.y0;
+    ctx.setLineDash([7, 5]); ctx.lineDashOffset = -t * 18;
+    ctx.strokeStyle = '#000'; ctx.lineWidth = 5; ctx.strokeRect(x0 - 2, y0 - 2, w + 4, hh + 4);
+    ctx.strokeStyle = '#7dffef'; ctx.lineWidth = 2.6; ctx.strokeRect(x0 - 2, y0 - 2, w + 4, hh + 4);
+  }
+  ctx.restore();
+}
+
+export function drawProps(ctx, run, camX, groundY, t, bestLabel, contrast = false) {
   const px = run.p.x;
   const letters = ['F', 'I', 'R', 'E'];
 
@@ -446,6 +465,7 @@ export function drawProps(ctx, run, camX, groundY, t, bestLabel) {
     if (h.type === 'snail') drawSnail(ctx, sx + (h.x1 - h.x0) / 2, groundY, t, h);
     else if (h.type === 'vine') drawVine(ctx, h, camX, groundY, t);
     else if (h.type === 'drop') drawDrop(ctx, h, camX, groundY, t);
+    if (contrast) outlineHazard(ctx, h, camX, groundY, t);
     if (!h.passed && ahead > -40) {
       const a = tellAlpha(ahead);
       if (h.type === 'snail') drawTell(ctx, sx + 19, groundY - 78, 'jump', a, t);
@@ -471,6 +491,10 @@ export function drawProps(ctx, run, camX, groundY, t, bestLabel) {
       case 'firefly': drawFirefly(ctx, q, camX, groundY, t); break;
       case 'letter': drawLetter(ctx, q, camX, groundY, t, letters[q.letter]); break;
       default:
+    }
+    if (contrast) {          // a white ring marks everything you can collect
+      ctx.save(); ctx.strokeStyle = 'rgba(0,0,0,0.85)'; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(sx, groundY - (q.y || 0), 17, 0, 6.2832); ctx.stroke();
+      ctx.strokeStyle = '#fff6c8'; ctx.lineWidth = 2.2; ctx.beginPath(); ctx.arc(sx, groundY - (q.y || 0), 17, 0, 6.2832); ctx.stroke(); ctx.restore();
     }
   }
 }

@@ -8,7 +8,8 @@ import { SaveStore } from './core/save.js';
 import { Loop } from './core/loop.js';
 import { Input } from './core/input.js';
 import { haptics } from './core/haptics.js';
-import { quality, QualityMonitor } from './core/quality.js';
+import { quality, QualityMonitor, QUALITY_NAMES } from './core/quality.js';
+import { pwa } from './core/pwa.js';
 import { Run } from './game/world.js';
 import { createJuice } from './game/juice.js';
 import { xpForRun, levelInfo } from './game/progress.js';
@@ -22,6 +23,11 @@ import { Panels } from './ui/panels.js';
 import { BIOMES, BIOME_ORDER } from './data/biomes.js';
 import { COMPANIONS } from './data/companions.js';
 import { UPGRADES } from './data/upgrades.js';
+import { TIER } from './data/achievements.js';
+import { SLOTS } from './data/cosmetics.js';
+import { evaluateAchievements, syncCosmetics } from './game/achievements.js';
+import { Toasts } from './ui/toast.js';
+import { medal } from './ui/icons.js';
 import { planAction } from './game/solver.js';
 import { FX } from './render/fx.js';
 import { BrambleVisual } from './render/bramble.js';
@@ -53,6 +59,10 @@ const ctl = { hitstop: 0, slow: 0, shake: 0, flash: 0, slowPulse: 0, zoom: 1 };
 const juice = createJuice({ run, fx, vis, hud, ctl, renderer, settings: saveStore.data.settings });
 const input = new Input(canvas);
 const IDLE = { press: false, hold: false, slide: false };
+const toasts = new Toasts($('#toasts'));
+let runTrophies = [];        // trophies earned while flying this run (they pop up live; the game-over card lists them too)
+let runLooks = [];
+let liveT = 0;
 
 let mode = 'title';          // title | running | paused | over
 let sessionPlayS = 0;        // seconds actually played this session (for the gentle break note)
@@ -72,10 +82,27 @@ function applySettings() {
   const st = saveStore.data.settings;
   haptics.enabled = !!st.haptics;
   renderer.reduced = !!st.reducedMotion;
+  renderer.contrast = !!st.highContrast;
+  renderer.noFlash = !st.flashes || !!st.reducedMotion;
+  hud.scale = st.largeText ? 1.2 : 1;
+  hud.mirror = !!st.leftHanded;
+  input.slideZone = st.tapSlide ? 0.68 : 0;
+  document.documentElement.classList.toggle('large', !!st.largeText);
+  app.classList.toggle('lefty', !!st.leftHanded);
+  app.classList.toggle('hc', !!st.highContrast);
   audio.setSettings({ music: st.music, sfx: st.sfx, musicVol: st.musicVol, sfxVol: st.sfxVol });
+  dbg.classList.toggle('hidden', !(DEBUG || st.showFps));
+  // graphics: a hand-picked level is pinned; 'auto' lets the quality monitor step down by itself
+  const qi = QUALITY_NAMES.indexOf(st.quality);
+  if (qi >= 0) {
+    if (!qm.pinned || quality.level !== qi) { qm.pinned = true; quality.set(qi); fx.setLimit(quality.cfg.particles); resize(); }
+  } else if (qm.pinned) {
+    qm.pinned = false; quality.set(0); fx.setLimit(quality.cfg.particles); resize(); qm.hiccup();
+  }
+  vis.setLook(saveStore.data.cosmetics.equipped);
 }
 
-function currentLoadout() { return buildLoadout(saveStore.data); }
+function currentLoadout(daily = false) { return buildLoadout(saveStore.data, { daily }); }
 
 /** Small red dots on the title tiles: something new worth a look. */
 function titleInfo() {
@@ -95,6 +122,8 @@ function titleInfo() {
       companions: COMPANIONS.some((c) => d.companions.owned[c.id] && !d.companions.seen[c.id]),
       upgrades: canBuy,
       quests: d.chests.pending > 0,
+      wardrobe: Object.keys(d.cosmetics.owned).some((id) => d.cosmetics.owned[id] && !d.cosmetics.seen[id]),
+      settings: pwa.state.waiting,
     },
   };
 }
@@ -122,10 +151,11 @@ function startRun(opts = {}) {
   run.reset(seed, {
     script: !tut.done && !daily && !startM,
     bestMeters: saveStore.data.best.distance,
-    loadout: currentLoadout(),
+    loadout: currentLoadout(daily),
     daily,
     startM,
   });
+  runTrophies = []; runLooks = []; liveT = 1;
   run.begin();
   const equipped = saveStore.data.companions.equipped;
   if (equipped && run.L.companion) saveStore.data.stats.runsByCompanion[equipped] = (saveStore.data.stats.runsByCompanion[equipped] | 0) + 1;
@@ -157,6 +187,26 @@ function resumeRun() {
   input.setEnabled(true);
   run.grace(0.8);
   qm.hiccup();
+}
+
+/** While flying: trophies measured by "best in one run" can unlock mid-flight, with a pop-up. */
+function liveCheck(dt) {
+  liveT -= dt;
+  if (liveT > 0) return;
+  liveT = 0.5;
+  if (startM || run.state !== 'running') return;
+  const d = saveStore.data;
+  const live = {
+    distM: Math.floor(run.distM), bestMult: run.stats.bestMult, seconds: run.time, seeds: run.seedsGot, hits: run.stats.hits,
+    biomeCount: Math.min(BIOME_ORDER.length, Math.floor(run.p.x / 18 / BIOME.lengthM) + 1),
+  };
+  const got = evaluateAchievements(d, clock.now(), live);
+  if (!got.length) return;
+  const fresh = syncCosmetics(d);
+  for (const a of got) { runTrophies.push(a); toasts.show({ title: 'Trophy earned', sub: `${a.name} · +${TIER[a.tier].embers} embers`, tier: a.tier, html: medal(a.tier) }); }
+  for (const c of fresh) { runLooks.push(c); toasts.show({ title: 'New look', sub: `${SLOTS.find((sl) => sl.id === c.slot).name}: ${c.name}`, tier: 'silver', html: '' }); }
+  audio.sfx('unlock');
+  saveStore.commitSoon();
 }
 
 function skipTips() {
@@ -199,6 +249,7 @@ function onOver() {
   st.longestRun = Math.max(st.longestRun, Math.round(run.time));
   st.powerups += s.powerups; st.vinesSlid += s.vinesSlid; st.bounces += s.bounces;
   st.perfectBeats += s.perfectBeats; st.festivals += s.festivals; st.surprises += s.surprises;
+  if (s.hits === 0) st.cleanBest = Math.max(st.cleanBest | 0, distM);
 
   // biomes visited (by id), for the "New place discovered" line
   const newPlaces = [];
@@ -215,6 +266,8 @@ function onOver() {
   const unlocked = unlockEarned(d);
   rollChest(d, { newBest, questDone: quests.completed.length > 0 || !!quests.weekly, luck: run.L.chestLuck }, Math.random);
   const after = levelInfo(d.xp);
+  const trophies = runTrophies.concat(evaluateAchievements(d, now)).map((a) => ({ ...a, embers: TIER[a.tier].embers }));
+  const looks = runLooks.concat(syncCosmetics(d)).map((c) => ({ ...c, slotName: SLOTS.find((sl) => sl.id === c.slot).name }));
   const persistent = saveStore.commit();
 
   // session time (for the gentle break note)
@@ -228,10 +281,10 @@ function onOver() {
     distM, score: run.score, seeds: run.seedsGot, xp: xpBase,
     newBest: newBest && prevBest > 0,
     prevBestM: prevBest, levelBefore: before, levelAfter: after, persistent,
-    quests: quests.completed, weekly: quests.weekly, daily, unlocked, biomes: newPlaces,
+    quests: quests.completed, weekly: quests.weekly, daily, unlocked, biomes: newPlaces, trophies, looks,
     next: nextCompanion(d), chests: d.chests.pending,
   });
-  if (unlocked.length) audio.sfx('unlock');
+  if (unlocked.length || trophies.length || looks.length) audio.sfx('unlock');
   if (showBreak) { ui.showBreak(); sessionPlayS = 0; }
 }
 
@@ -240,6 +293,24 @@ run.emit = (name, a, b) => {
   if (name === 'over') onOver();
   else if (name === 'tutorial') { saveStore.commitSoon(); if (saveStore.data.tutorial.done) ui.setTips(false); }
 };
+
+/** Wardrobe preview: draw Cinder wearing `ids` into a small canvas (the shared hero is put back afterwards). */
+function previewHero(cv, ids) {
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const w = cv.clientWidth; const h = cv.clientHeight;
+  if (w < 4 || h < 4) return;
+  if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+  const g = cv.getContext('2d');
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.clearRect(0, 0, w, h);
+  vis.setLook(ids);
+  const sc = Math.min(h / 128, w / 230);
+  g.save(); g.translate(w * 0.5 + 14 * sc, h * 0.84); g.scale(sc, sc);
+  g.fillStyle = 'rgba(0,0,0,0.38)'; g.beginPath(); g.ellipse(-16, 3, 50, 6, 0, 0, Math.PI * 2); g.fill();
+  vis.draw(g, 0, 0, 0, 0, run, 'title');
+  g.restore();
+  vis.setLook(saveStore.data.cosmetics.equipped);
+}
 
 const ui = new UI({
   play: () => startRun(),
@@ -256,15 +327,15 @@ const ui = new UI({
 const panels = new Panels({
   saveStore, audio, haptics,
   getLuck: () => currentLoadout().chestLuck,
-  onChange: () => { if (mode === 'title') run.L = currentLoadout(); },
+  previewHero,
+  onChange: () => { vis.setLook(saveStore.data.cosmetics.equipped); if (mode === 'title') run.L = currentLoadout(); },
   onSettings: applySettings,
-  onClose: () => { if (mode === 'title') ui.refreshTitle(titleInfo()); else if (mode === 'over') ui.refreshOverChests(saveStore.data.chests.pending); },
+  onClose: () => { syncInstall(); if (mode === 'title') ui.refreshTitle(titleInfo()); else if (mode === 'over') ui.refreshOverChests(saveStore.data.chests.pending); },
   onDaily: () => startRun({ daily: true }),
 });
 input.onPause = () => { if (mode === 'running') pauseRun(); else if (mode === 'paused') resumeRun(); };
 // Browsers only allow sound after a tap: unlock on the first one (and keep trying until the context runs).
 for (const ev of ['pointerdown', 'touchstart', 'keydown']) window.addEventListener(ev, () => audio.unlock(), { passive: true });
-applySettings();
 
 // ------------------------------------------------------------------ sizing, safe areas, orientation
 const probe = $('#safe-probe');
@@ -295,6 +366,12 @@ const qm = new QualityMonitor(() => {
   resize();
 });
 
+// "Install app" chip on the title (only when the browser offers it and the player has finished a run)
+const btnInstall = $('#btn-install');
+function syncInstall() { btnInstall.classList.toggle('hidden', !(pwa.canInstall && mode === 'title' && saveStore.data.stats.runs >= 1)); }
+btnInstall.addEventListener('click', (e) => { e.preventDefault(); pwa.install().then(syncInstall); });
+pwa.onChange(() => { syncInstall(); if (mode === 'title') ui.refreshTitle(titleInfo()); });
+
 if (typeof ResizeObserver !== 'undefined') new ResizeObserver(resize).observe(app);
 window.addEventListener('resize', resize);
 window.addEventListener('orientationchange', () => setTimeout(resize, 160));
@@ -317,7 +394,6 @@ window.addEventListener('blur', () => { if (mode === 'running') pauseRun(); });
 let fpsEma = 60;
 let dbgTimer = 0;
 const dbg = $('#debug');
-if (DEBUG) dbg.classList.remove('hidden');
 
 /** Freeze the interpolation so a hit-stop shows a still frame instead of replaying the last step. */
 function syncPrev() { run.prevX = run.p.x; run.prevY = run.p.y; run.prevCamX = run.camX; }
@@ -364,6 +440,7 @@ function update(dt) {
     if (ctl.slow > 0) { ctl.slow -= dt; scale = 0.72; }
     if (ctl.slowPulse > 0) { ctl.slowPulse -= dt; scale = Math.min(scale, calm ? 1 : 0.85); }
     run.update(dt * scale, tick);
+    liveCheck(dt);
   } else {
     run.update(dt, IDLE);
   }
@@ -372,10 +449,11 @@ function update(dt) {
 function render(alpha, frameDt) {
   renderer.render(alpha, mode, frameDt);
   if (mode === 'running') qm.sample(frameDt * 1000);
-  if (DEBUG) {
+  if (DEBUG || saveStore.data.settings.showFps) {
     fpsEma += ((1 / Math.max(frameDt, 0.001)) - fpsEma) * 0.05;
     dbgTimer -= frameDt;
-    if (dbgTimer <= 0) {
+    if (dbgTimer <= 0 && !DEBUG) { dbgTimer = 0.5; dbg.textContent = `${fpsEma.toFixed(0)} fps · ${quality.cfg.name}`; }
+    else if (dbgTimer <= 0) {
       dbgTimer = 0.25;
       const hz = run.hazards.filter((h) => h.active).length;
       const pk = run.pickups.filter((h) => h.active).length;
@@ -388,15 +466,17 @@ function render(alpha, frameDt) {
 
 const loop = new Loop(update, render, SIM.dt, SIM.maxSteps);
 
+applySettings();
 resize();
 goTitle();
 loop.start();
+pwa.init();
 
 // Test + debug handle (harmless in production; handy for the validator and automated tests).
 window.__cozy = {
   run, fx, input, saveStore, loop, renderer,
   get mode() { return mode; },
-  startRun, goTitle, pauseRun, resumeRun, audio, panels, ui, ctl, clock, applySettings,
+  startRun, goTitle, pauseRun, resumeRun, audio, panels, ui, ctl, clock, applySettings, vis, hud, pwa, toasts, qm, quality,
   get sessionPlayS() { return sessionPlayS; },
   addSessionMinutes(m) { sessionPlayS += m * 60; },
   autoplay(on) { autoplay = !!on; },

@@ -14,9 +14,10 @@ export function defaultLoadout() {
   };
 }
 
-/** @param data the save's data object */
-export function buildLoadout(data) {
+/** @param data the save's data object @param opts {daily} the Daily Run ignores gentle mode so everyone flies the same challenge */
+export function buildLoadout(data, opts = {}) {
   const L = defaultLoadout();
+  if (data.settings && data.settings.gentle && !opts.daily) L.hearts += 1;
   const up = data.upgrades || {};
   L.magnetR += upgradeValue(UPGRADE_BY_ID.magnet, up.magnet | 0);
   L.powerMul += (up.duration | 0) * UPGRADE_BY_ID.duration.per;
