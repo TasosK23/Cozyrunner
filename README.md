@@ -25,7 +25,7 @@ After that, every push to `main` redeploys the game by itself. The repository al
 
 Open the address **once while you are online** and let the game load. When **Settings > Install and offline** says **Ready to play offline**, the game has saved itself on the phone.
 
-- **Android (Chrome, for example a Samsung S24+):** tap the **Install app** chip at the bottom-left of the title screen (it shows up once Chrome offers installation; **Settings > Install app** does the same). The same thing is in Chrome's menu (the three dots) as **Install app** or **Add to Home screen**. The icon lands in your app drawer and the game opens full-screen with no browser bars.
+- **Android (Chrome, for example a Samsung S24+):** tap the **Install app** chip under the tagline on the title screen (it shows up after your first finished flight, once Chrome offers installation; **Settings > Install app** does the same). The same thing is in Chrome's menu (the three dots) as **Install app** or **Add to Home screen**. The icon lands in your app drawer and the game opens full-screen with no browser bars.
 - **iPhone or iPad (Safari):** tap the **Share** button, then **Add to Home Screen**, then **Add**. iOS has no install button for web apps; the Share sheet is the way in.
 - **Desktop Chrome or Edge:** use the install icon at the right end of the address bar.
 
