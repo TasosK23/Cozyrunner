@@ -143,6 +143,7 @@ export class BrambleVisual {
     ctx.save();
     ctx.globalAlpha = alpha;
     ctx.translate(x, y);
+    ctx.scale(1.12, 1.12);       // art is a touch bigger than the hitbox: forgiving and easier to read
     let wob = 0;
     if (this.hurt > 0) wob = Math.sin(t * 38) * 0.28 * this.hurt;
     ctx.rotate(this.tilt + wob);

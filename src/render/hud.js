@@ -47,7 +47,7 @@ export class Hud {
   }
 
   draw(ctx, run, W, H, safe) {
-    if (run.state === 'ready') return;
+    if (run.state === 'ready' || run.state === 'over') return;
     const top = safe.top + 10;
     const left = safe.left + 14;
 

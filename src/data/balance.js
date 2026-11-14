@@ -13,7 +13,7 @@ export const UNITS_PER_METER = 18;
 export const VIEW = {
   width: 520,       // logical units visible horizontally
   playerX: 0.25,    // where Bramble sits on screen (fraction of width)
-  groundY: 0.68,    // where the ground line sits (fraction of visible height)
+  groundFrac: 0.68, // where the ground line sits (fraction of visible height)
   lookahead: 1300,  // how far ahead of Bramble the course is already built
 };
 

@@ -50,9 +50,10 @@ function layerIslets(pal) {
     // distant clouds
     for (let i = 0; i < 4; i++) {
       const x = (i + 0.2 + r() * 0.5) * (w / 4);
-      const y = 40 + r() * (h * 0.5);
+      const y = 56 + r() * (h * 0.5);
+      const sc = 0.8 + r() * 0.5;
       g.globalAlpha = 0.85;
-      wrapDraw(w, x, 60, (xx) => cloud(g, xx, y, 0.9 + r() * 0.5, pal));
+      wrapDraw(w, x, 90, (xx) => cloud(g, xx, y, sc, pal));
     }
     g.globalAlpha = 1;
     // far floating islets (hazy)
@@ -83,9 +84,10 @@ function layerClouds(pal) {
     const r = mulberry32(5);
     for (let i = 0; i < 6; i++) {
       const x = (i + r() * 0.8) * (w / 6);
-      const y = 20 + r() * (h - 70);
+      const y = 56 + r() * (h - 130);
+      const sc = 0.8 + r() * 0.6;
       g.globalAlpha = 0.95;
-      wrapDraw(w, x, 80, (xx) => cloud(g, xx, y, 0.9 + r() * 0.7, pal));
+      wrapDraw(w, x, 90, (xx) => cloud(g, xx, y, sc, pal));
     }
     g.globalAlpha = 1;
   };
@@ -165,18 +167,20 @@ function layerSea(pal) {
     for (let row = 0; row < 4; row++) {
       for (let i = 0; i < 6; i++) {
         const x = ((i + r() * 0.8) / 6) * w;
-        const y = 24 + row * (h / 4.2);
-        g.globalAlpha = 0.55 + row * 0.1;
-        wrapDraw(w, x, 90, (xx) => cloud(g, xx, y, 1.5 + r() * 0.8, pal));
+        const y = 70 + row * (h / 4.6);
+        const sc = 1.5 + r() * 0.8;
+        g.globalAlpha = 0.7 + row * 0.08;
+        wrapDraw(w, x, 110, (xx) => cloud(g, xx, y, sc, pal));
       }
     }
     g.globalAlpha = 1;
-    // soft top edge so it melts into the hills' haze
+    // soft top edge so it melts into the hills' haze: ONE full-tile mask whose alpha ramps 0 -> 1
+    // over the first 80 units. (destination-in clears everything a fill doesn't cover, so it must
+    // cover the whole tile in a single fill.)
     g.globalCompositeOperation = 'destination-in';
-    const m = g.createLinearGradient(0, 0, 0, 80);
-    m.addColorStop(0, 'rgba(0,0,0,0)'); m.addColorStop(1, 'rgba(0,0,0,1)');
-    g.fillStyle = m; g.fillRect(0, 0, w, 80);
-    g.fillRect(0, 80, w, h);
+    const m = g.createLinearGradient(0, 0, 0, h);
+    m.addColorStop(0, 'rgba(0,0,0,0)'); m.addColorStop(80 / h, 'rgba(0,0,0,1)'); m.addColorStop(1, 'rgba(0,0,0,1)');
+    g.fillStyle = m; g.fillRect(0, 0, w, h);
     g.globalCompositeOperation = 'source-over';
   };
 }
