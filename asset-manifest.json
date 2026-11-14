@@ -1,5 +1,5 @@
 {
-  "version": "0.3.0-5705225857",
+  "version": "0.3.0-c70ab01c33",
   "files": [
     "css/style.css",
     "icons/apple-touch-icon.png",
@@ -50,6 +50,7 @@
     "src/render/props.js",
     "src/render/renderer.js",
     "src/render/terrain.js",
+    "src/ui/debug.js",
     "src/ui/icons.js",
     "src/ui/panels.js",
     "src/ui/toast.js",

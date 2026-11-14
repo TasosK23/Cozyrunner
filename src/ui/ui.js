@@ -42,7 +42,7 @@ export class UI {
     window.addEventListener('keydown', (e) => {
       if (e.repeat) return;
       const ok = e.code === 'Space' || e.code === 'Enter';
-      if (!ok) return;
+      if (!ok || this.menuOpen()) return;            // a sheet is open: Space/Enter belong to its focused button
       if (!this.screens.title.classList.contains('hidden')) { e.preventDefault(); h.play(); }
       else if (!this.screens.over.classList.contains('hidden')) { e.preventDefault(); if (performance.now() >= this.overReadyAt) h.again(); }
       else if (!this.screens.pause.classList.contains('hidden')) { e.preventDefault(); h.resume(); }

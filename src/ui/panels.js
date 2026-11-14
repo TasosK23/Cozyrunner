@@ -46,6 +46,9 @@ export class Panels {
     $('#menu-back').addEventListener('click', (e) => { e.preventDefault(); this.close(); });
     this.body.addEventListener('click', (e) => this._click(e));
     this.body.addEventListener('input', (e) => this._input(e));
+    this.body.addEventListener('keydown', (e) => {          // locked look cards are focusable articles: Enter/Space previews them
+      if ((e.code === 'Enter' || e.code === 'Space') && e.target.matches && e.target.matches('article[data-act]')) { e.preventDefault(); e.target.click(); }
+    });
     window.addEventListener('keydown', (e) => { if (e.code === 'Escape' && this.isOpen()) this.close(); });
   }
 

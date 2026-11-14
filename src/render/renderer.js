@@ -10,7 +10,8 @@
  * cross-fades two of them while Bramble walks through the doorway between biomes. Palettes are blended and
  * cached in 1/24 steps.
  */
-import { VIEW, BIOME, UNITS_PER_METER, POWER } from '../data/balance.js';
+import { VIEW, BIOME, UNITS_PER_METER, POWER, PLAYER } from '../data/balance.js';
+import { playerBox } from '../game/physics.js';
 import { quality } from '../core/quality.js';
 import { BIOMES, BIOME_ORDER, mixPalette } from '../data/biomes.js';
 import { Backdrop } from './backdrop.js';
@@ -44,6 +45,7 @@ export class Renderer {
     this.flash = 0;                       // soft white flash 0..1
     this.beat = 0;                        // music beat pulse 0..1
     this.reduced = false;
+    this.showBoxes = false;               // debug: draw the real hit areas
     this.noFlash = false;                 // accessibility: never draw the white screen flash
     this.contrast = false;                // high-contrast mode: dimmer backdrop, bright outlines on hazards and pickups
     this.blend = { a: 0, b: 0, u: 1 };
@@ -255,6 +257,7 @@ export class Renderer {
     const px = W * VIEW.playerX;
     this._auras(ctx, px, g - py - 30, run, tt);
     this.vis.draw(ctx, px, g - py, g, py, run, mode);
+    if (this.showBoxes) this._boxes(ctx, run, camX, g, px, py);
     if (run.L.companion && run.state !== 'over') {
       const cy = g - py - 70 + Math.sin(tt * 3) * 3 - Math.min(18, Math.max(-8, run.p.vy * 0.012));
       drawCompanion(ctx, run.L.companion, px - 46 + Math.sin(tt * 1.7) * 3, cy, tt, 0.78);
@@ -558,6 +561,23 @@ export class Renderer {
         break;
       default:
     }
+    ctx.restore();
+  }
+
+  /** Debug overlay: exactly what the collision code tests (player box shrunk by the forgiveness, hazards, pickups). */
+  _boxes(ctx, run, camX, g, px, py) {
+    const b = playerBox(run.p, -PLAYER.forgive, this._dbgBox || (this._dbgBox = { x0: 0, x1: 0, y0: 0, y1: 0 }));
+    ctx.save(); ctx.lineWidth = 1.5;
+    ctx.strokeStyle = '#3dff7a'; ctx.strokeRect(px + (b.x0 - run.p.x), g - py - (b.y1 - run.p.y), b.x1 - b.x0, b.y1 - b.y0);
+    ctx.strokeStyle = '#ff4a4a';
+    for (const h of run.hazards) {
+      if (!h.active) continue;
+      const sx = h.x0 - camX; if (sx > 700 || h.x1 - camX < -80) continue;
+      if (h.type === 'gap') { ctx.beginPath(); ctx.moveTo(sx, g); ctx.lineTo(h.x1 - camX, g); ctx.stroke(); }
+      else ctx.strokeRect(sx, g - h.y1, h.x1 - h.x0, h.y1 - h.y0);
+    }
+    ctx.strokeStyle = '#ffd84a';
+    for (const q of run.pickups) { if (!q.active) continue; const sx = q.x - camX; if (sx > 640 || sx < -60) continue; ctx.beginPath(); ctx.arc(sx, g - q.y, 14, 0, 6.2832); ctx.stroke(); }
     ctx.restore();
   }
 

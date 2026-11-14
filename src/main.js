@@ -45,6 +45,12 @@ const DEBUG = params.has('debug');
 // ------------------------------------------------------------------ core objects
 const saveStore = new SaveStore();
 saveStore.load();
+if (saveStore.isNew && typeof matchMedia === 'function') {
+  // first visit: start from the phone's own accessibility preferences (the player can still change them in Settings)
+  const pref = (q) => { try { return matchMedia(q).matches; } catch (_) { return false; } };
+  if (pref('(prefers-reduced-motion: reduce)')) saveStore.data.settings.reducedMotion = true;
+  if (pref('(prefers-contrast: more)')) saveStore.data.settings.highContrast = true;
+}
 haptics.enabled = !!saveStore.data.settings.haptics;
 
 const app = $('#app');
@@ -68,8 +74,9 @@ let mode = 'title';          // title | running | paused | over
 let sessionPlayS = 0;        // seconds actually played this session (for the gentle break note)
 let breakShown = false;
 let pendingDaily = false;
-const startM = Number(params.get('startM')) || 0;   // debug: begin a run this many meters in
+let startM = Number(params.get('startM')) || 0;     // debug: begin a run this many meters in
 let autoplay = false;        // debug autopilot
+let dbgPanel = null;         // the ?debug panel (null for normal players)
 let autoTick = 0;
 let autoAct = IDLE;
 
@@ -440,6 +447,7 @@ function update(dt) {
     if (ctl.slow > 0) { ctl.slow -= dt; scale = 0.72; }
     if (ctl.slowPulse > 0) { ctl.slowPulse -= dt; scale = Math.min(scale, calm ? 1 : 0.85); }
     run.update(dt * scale, tick);
+    if (dbgPanel && dbgPanel.state.god && run.state === 'running') run.hearts = run.maxHearts;
     liveCheck(dt);
   } else {
     run.update(dt, IDLE);
@@ -448,6 +456,7 @@ function update(dt) {
 
 function render(alpha, frameDt) {
   renderer.render(alpha, mode, frameDt);
+  if (dbgPanel) { dbgPanel.frame(frameDt); dbgPanel.setFps(fpsEma, quality.cfg.name); }
   if (mode === 'running') qm.sample(frameDt * 1000);
   if (DEBUG || saveStore.data.settings.showFps) {
     fpsEma += ((1 / Math.max(frameDt, 0.001)) - fpsEma) * 0.05;
@@ -471,6 +480,22 @@ resize();
 goTitle();
 loop.start();
 pwa.init();
+if (DEBUG) {
+  import('./ui/debug.js').then(({ mountDebug }) => {
+    dbgPanel = mountDebug({
+      saveStore, renderer, clock, applySettings,
+      setStartM(m) { startM = m | 0; },
+      toast(msg) { toasts.show({ title: 'Debug', sub: msg, html: '' }, 1800); },
+      unlockAll() {
+        const d = saveStore.data;
+        for (const k of Object.keys(d.achievements)) if (!d.achievements[k]) d.achievements[k] = Date.now();
+        for (const k of Object.keys(d.cosmetics.owned)) { if (!d.cosmetics.owned[k]) { d.cosmetics.owned[k] = true; d.cosmetics.seen[k] = false; } }
+        for (const c of COMPANIONS) d.companions.owned[c.id] = true;
+        saveStore.commit(); run.L = currentLoadout();
+      },
+    });
+  });
+}
 
 // Test + debug handle (harmless in production; handy for the validator and automated tests).
 window.__cozy = {

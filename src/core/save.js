@@ -130,11 +130,13 @@ export class SaveStore {
   constructor() {
     this.data = defaultSave();
     this.persistent = storage.persistent;
+    this.isNew = true;            // true until a save has been loaded or written (first visit)
     this._timer = 0;
   }
 
   load() {
     const text = storage.get(SAVE_KEY);
+    this.isNew = !text;
     this.data = text ? parseSave(text) : defaultSave();
     return this.data;
   }
