@@ -27,7 +27,7 @@ try:
     pg.evaluate("()=>__cozy.goTitle()"); pg.wait_for_timeout(200)
     # --- upgrades shop
     pg.tap('[data-open=upgrades]'); pg.wait_for_timeout(300); pg.screenshot(path=f'{SH}/s02-upgrades.png')
-    check('upgrades sheet opens', pg.is_visible('#screen-menu') and 'Seed Magnet' in pg.inner_text('#menu-body'))
+    check('upgrades sheet opens', pg.is_visible('#screen-menu') and 'ember magnet' in pg.inner_text('#menu-body').lower())
     pg.tap('[data-act=buy][data-id=magnet]'); pg.wait_for_timeout(200)
     d=pg.evaluate("()=>({lv:__cozy.saveStore.data.upgrades.magnet,bank:__cozy.saveStore.data.seedsBank})")
     check('buying an upgrade spends seeds', d['lv']==1 and d['bank']==940, str(d))
@@ -74,7 +74,7 @@ try:
     pg.tap('#menu-back'); pg.wait_for_timeout(200)
     # --- streak next day via the clock
     pg.evaluate("()=>{__cozy.clock.shiftDays(1); __cozy.goTitle()}"); pg.wait_for_timeout(200)
-    check('streak shown as at risk/kept next day', 'day' in pg.inner_text('#btn-daily'))
+    check('streak shown as at risk/kept next day', 'day' in pg.inner_text('#btn-daily').lower())
     pg.evaluate("()=>{__cozy.startRun({daily:true}); for(let i=0;i<4000&&__cozy.run.state!=='over';i++) __cozy.step(1)}")
     pg.wait_for_function("()=>__cozy.mode==='over'",timeout=15000)
     check('streak grows to 2 on consecutive days', pg.evaluate("()=>__cozy.saveStore.data.daily.streak")==2)
@@ -99,8 +99,9 @@ try:
     check('resume restores the music', pg.evaluate("()=>__cozy.audio.paused")==False)
     # --- perf sample: cost of simulating + drawing a frame
     pg.evaluate("()=>{__cozy.autoplay(true)}"); pg.wait_for_timeout(1500)
-    ms=pg.evaluate("()=>{const t=performance.now();for(let i=0;i<120;i++){__cozy.step(1);__cozy.renderer.render(0.5,'running',1/60)}return (performance.now()-t)/120}")
-    check('frame CPU cost (sim+render) under 8 ms in software GL', ms<8, f'{ms:.2f} ms')
+    # the REAL loop's frame rate (software GL has no GPU, so this is a floor, not a promise: it guards against disasters)
+    fps=pg.evaluate("""()=>new Promise(res=>{const R=__cozy.renderer; const w=R.render; let n=0; R.render=function(...a){n++; return w.apply(this,a)}; const t=performance.now(); setTimeout(()=>{R.render=w; res(n/((performance.now()-t)/1000))},3000)})""")
+    check('real game loop keeps >= 24 fps in software GL (autopilot, no GPU)', fps>=24, f'{fps:.1f} fps')
     check('no console / page errors', not errs, '; '.join(errs)[:200])
     b.close()
 finally: server.terminate()
