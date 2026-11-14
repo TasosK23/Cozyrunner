@@ -1,0 +1,3 @@
+#!/bin/sh
+# Keeps the offline cache list + build hash in step with the game files. Enable with:  git config core.hooksPath .githooks
+node tools/gen-assets.mjs >/dev/null && git add asset-manifest.json sw.js
