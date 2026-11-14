@@ -239,6 +239,27 @@ try:
     pg.evaluate("()=>__cozy.goTitle()")
     ctx.close()
 
+    # ================================================== 6. title layout: the buttons never bury the dragon
+    def title_geo(pg):
+        return pg.evaluate("""()=>{const r=s=>document.querySelector(s).getBoundingClientRect(); const bt=r('.title-bottom'), tp=r('.title-pills');
+          const tiles=[...document.querySelectorAll('.tiles .tile')].map(t=>t.getBoundingClientRect());
+          return {stackTop:bt.top, pillsBottom:tp.bottom, tilesIn:tiles.every(t=>t.left>=0&&t.right<=innerWidth&&t.bottom<=innerHeight), scrollW:document.documentElement.scrollWidth}}""")
+    for (w,h,slack) in [(412,780,8),(412,915,8),(390,844,8),(360,640,30)]:
+        ctx,pg=new_page(b,w=w,h=h); returning(pg)
+        g=title_geo(pg); ground=0.68*h
+        check(f"title {w}x{h}: the buttons start below the dragon's feet", g['stackTop']>=ground-slack, f"stack top {g['stackTop']:.0f}, ground {ground:.0f}")
+        check(f'title {w}x{h}: every tile is on screen, no sideways scroll', g['tilesIn'] and g['scrollW']<=w)
+        check(f"title {w}x{h}: the status pills sit above the dragon's head", g['pillsBottom']<=ground-105, f"pills end {g['pillsBottom']:.0f}")
+        ctx.close()
+    ctx,pg=new_page(b,w=360,h=640); returning(pg)
+    pg.evaluate("()=>document.querySelector('#btn-install').classList.remove('hidden')")      # as if Chrome offered installation
+    chip=pg.evaluate("()=>{const c=document.querySelector('#btn-install').getBoundingClientRect(), t=document.querySelector('.tiles').getBoundingClientRect(); return {cb:c.bottom, tt:t.top, cr:c.right, cl:c.left, W:innerWidth}}")
+    check('title 360x640: the Install chip sits with the pills, clear of the tiles and the dragon', chip['cb']<=0.68*640-100 and chip['cb']<=chip['tt'] and chip['cl']>=0 and chip['cr']<=chip['W'], str(chip))
+    ctx.close()
+    ctx,pg=new_page(b,w=360,h=640)
+    check('a brand-new player sees only the hint and FLY', pg.is_visible('#btn-play') and pg.is_visible('#title-best') and not pg.is_visible('.tiles') and not pg.is_visible('#btn-daily') and not pg.is_visible('#title-seeds'))
+    ctx.close()
+
     real=[e for e in ERRS if 'Failed to load resource' not in e]
     check('no console / page errors in any scenario', not real, '; '.join(real[:3]))
     b.close()

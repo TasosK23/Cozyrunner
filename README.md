@@ -101,7 +101,7 @@ node tests/meta.mjs                # 40 data checks: trophies, looks, eggs, save
 node tools/gen-assets.mjs --check  # the offline file list and build stamp match the files
 python3 tests/e2e.py               # 18 checks, headless Chrome: controls, pause, restart, saving, game over
 python3 tests/e2e2.py              # 28 checks: menus, forge, beasts, quests, daily run, eggs, audio, break note, frame-rate floor
-python3 tests/e2e3.py              # 72 checks: trophies with live toasts, wardrobe, stats, every setting, accessibility, migration, debug panel
+python3 tests/e2e3.py              # 86 checks: trophies with live toasts, wardrobe, stats, every setting, accessibility, migration, debug panel, title layout on four phone sizes
 python3 tests/pwa.py               # 24 checks: manifest, icons, service worker, real offline play, update flow, cache cleanup
 ```
 
